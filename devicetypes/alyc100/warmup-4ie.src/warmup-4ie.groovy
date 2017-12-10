@@ -14,12 +14,17 @@
  *
  *
  *	VERSION HISTORY
+ *	10.12.2017 	v1.0 BETA Release 3 - Add boost functionality.
  *	05.01.2017	v1.0 BETA Release 2 - Minor fix that prevented 'Manual' mode being selected and activated.
  *  14.12.2016	v1.0 BETA - Initial Release
  */
+import groovy.time.TimeCategory 
+
 preferences 
 {
-	input( "disableDevice", "bool", title: "Disable Warmup Heating Device?", required: false, defaultValue: false )
+	input( "boostInterval", "number", title: "Boost Interval (minutes)", description: "Boost interval amount in minutes", required: false, defaultValue: 10 )
+    input( "boostTemp", "decimal", title: "Boost Temperature (°C)", description: "Boost interval amount in Centigrade", required: false, defaultValue: 22, range: "5..32" )
+    input( "disableDevice", "bool", title: "Disable Warmup Heating Device?", required: false, defaultValue: false )
 }
 
 metadata {
@@ -39,6 +44,10 @@ metadata {
         command "setHeatingSetpoint"
         command "setTemperatureForSlider"
         command "setTemperature"
+        command "setBoostLength"
+        command "boostButton"
+        command "boostTimeUp"
+		command "boostTimeDown"
 	}
 
 	simulator {
@@ -124,11 +133,11 @@ metadata {
 					[value: 29, color: "#bc2323"]
             ]
 		}
-        standardTile("heatingSetpointUp", "device.desiredHeatSetpoint", width: 1, height: 2, canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
+        standardTile("heatingSetpointUp", "device.desiredHeatSetpoint", width: 1, height: 1, canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
 			state "heatingSetpointUp", label:'  ', action:"heatingSetpointUp", icon:"st.thermostat.thermostat-up", backgroundColor:"#ffffff"
 		}
 
-		standardTile("heatingSetpointDown", "device.desiredHeatSetpoint", width: 1, height: 2, canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
+		standardTile("heatingSetpointDown", "device.desiredHeatSetpoint", width: 1, height: 1, canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
 			state "heatingSetpointDown", label:'  ', action:"heatingSetpointDown", icon:"st.thermostat.thermostat-down", backgroundColor:"#ffffff"
 		}
         
@@ -160,8 +169,19 @@ metadata {
         	state "default", action:"off", icon:"st.thermostat.heating-cooling-off"
    	 	}
         
+        valueTile("boost", "device.boostLabel", inactiveLabel: false, decoration: "flat", width: 2, height: 2, wordwrap: true) {
+			state("default", label:'${currentValue}', action:"boostButton")
+		}
+        
+         standardTile("boostTimeUp", "device.boostLength", width: 1, height: 1, canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
+			state "heatingSetpointUp", label:'  ', action:"boostTimeUp", icon:"st.thermostat.thermostat-up", backgroundColor:"#ffffff"
+		}
+		standardTile("boostTimeDown", "device.boostLength", width: 1, height: 1, canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
+			state "heatingSetpointDown", label:'  ', action:"boostTimeDown", icon:"st.thermostat.thermostat-down", backgroundColor:"#ffffff"
+		}
+        
         main(["temperature"])
-		details(["thermostat", "mode_auto", "mode_manual", "mode_off", "heatingSetpointUp", "heatingSetpoint" , "heatingSetpointDown", "refresh"])
+		details(["thermostat", "mode_auto", "mode_manual", "mode_off", "heatingSetpointUp", "heatingSetpoint", "boost", "boostTimeUp", "heatingSetpointDown", "boostTimeDown", "refresh"])
 	}
 }
 
@@ -277,7 +297,14 @@ def emergencyHeat() {
 	log.debug "Executing 'boost'"
 	
     def latestThermostatMode = device.latestState('thermostatMode')
-    setThermostatMode('emergency heat')
+    
+    //Don't do if already in BOOST mode.
+	if (latestThermostatMode.stringValue != 'emergency heat') {
+		setThermostatMode('emergency heat')
+    }
+    else {
+    	log.debug "Already in boost mode."
+    }
 }
 
 
@@ -288,8 +315,8 @@ def setThermostatMode(mode) {
     	def args
     	if (mode == 'off') {
         	//Sets whole location to off instead of individual thermostat. Awaiting Warmup API update.
-        	/*
-            args = [
+        	
+            /*args = [
         		method: "setRunModeByRoomIdArray", roomIdArray: [device.deviceNetworkId as Integer], values: [runMode: "frost"]
         	]
         	parent.apiPOSTByChild(args)
@@ -300,7 +327,17 @@ def setThermostatMode(mode) {
         		method: "setProgramme", roomId: device.deviceNetworkId, roomMode: "fixed"
         	]	
             parent.apiPOSTByChild(args)
-    	} else {
+    	} else if (mode == 'emergency heat') {  
+    		if (state.boostLength == null || state.boostLength == '')
+        	{
+        		state.boostLength = 60
+            	sendEvent("name":"boostLength", "value": 60, displayed: true)
+        	}
+            args = [
+        		method: "setOverride", rooms: ["$device.deviceNetworkId"], type: 3, temp: getBoostTempValue(), until: getBoostEndTime()
+        	]
+            parent.apiPOSTByChild(args)
+   		} else {
         	args = [
         		method: "setProgramme", roomId: device.deviceNetworkId, roomMode: "prog"
         	]
@@ -309,6 +346,74 @@ def setThermostatMode(mode) {
 		mode = mode == 'range' ? 'auto' : mode    	
     }
     runIn(3, refresh)
+}
+
+def refreshBoostLabel() {
+	def boostLabel = "Start\n$state.boostLength Min Boost"
+    def latestThermostatMode = device.latestState('thermostatMode')  
+    if (latestThermostatMode.stringValue == 'emergency heat' ) {
+    	boostLabel = "Restart\n$state.boostLength Min Boost"
+    }
+    sendEvent("name":"boostLabel", "value": boostLabel, displayed: false)
+}
+
+def setBoostLength(minutes) {
+	log.debug "Executing 'setBoostLength with length $minutes minutes'"
+    if (minutes < 10) {
+		minutes = 10
+	}
+	if (minutes > 240) {
+		minutes = 240
+	}
+    state.boostLength = minutes
+    sendEvent("name":"boostLength", "value": state.boostLength, displayed: true)
+    refreshBoostLabel()  
+}
+
+def getBoostIntervalValue() {
+	if (settings.boostInterval == null) {
+    	return 10
+    } 
+    return settings.boostInterval.toInteger()
+}
+
+def getBoostTempValue() {
+	log.debug "Executing 'getBoostTempValue'"
+	def retVal 
+	if (settings.boostTemp == null) {
+    	retVal = "220"
+    } 
+    retVal = ((settings.boostTemp as Integer) * 10) as String
+    return retVal
+}
+
+def getBoostEndTime() {
+	log.debug "Executing 'getBoostEndTime'"
+	use( TimeCategory ) {
+    	def endDate = new Date() + state.boostLength.minutes
+		return endDate.format("HH:mm")
+	}
+}
+
+def boostTimeUp() {
+	log.debug "Executing 'boostTimeUp'"
+    //Round down results
+    int boostIntervalValue = getBoostIntervalValue()
+    def newBoostLength = (state.boostLength + boostIntervalValue) - (state.boostLength % boostIntervalValue)
+	setBoostLength(newBoostLength)
+}
+
+def boostTimeDown() {
+	log.debug "Executing 'boostTimeDown'"
+    //Round down result
+    int boostIntervalValue = getBoostIntervalValue()
+    def newBoostLength = (state.boostLength - boostIntervalValue) - (state.boostLength % boostIntervalValue)
+	setBoostLength(newBoostLength)
+}
+
+def boostButton() {
+	log.debug "Executing 'boostButton'"
+	setThermostatMode('emergency heat')
 }
 
 def poll() {
@@ -325,8 +430,17 @@ def poll() {
     if (mode == "fixed") mode = "heat"
     else if (mode == "off" || mode == "frost") mode = "off"
     else if (mode == "prog") mode = "auto"
+    else if (mode == "override") mode = "emergency heat"
     sendEvent(name: 'thermostatMode', value: mode) 
     modeMsg = "Mode: " + mode.toUpperCase() + "."
+    
+ 	//Boost button label
+        if (state.boostLength == null || state.boostLength == '')
+        {
+        	state.boostLength = 60
+            sendEvent("name":"boostLength", "value": 60, displayed: true)
+        }
+    	def boostLabel = "Start\n$state.boostLength Min Boost"
     
     //If Warmup heating device is set to disabled, then force off if not already off.
     if (settings.disableDevice != null && settings.disableDevice == true && activeHeatCoolMode != "OFF") {
@@ -338,7 +452,11 @@ def poll() {
         */
         parent.setLocationToFrost()
     	mode = 'off'
-    } 
+    } else if (mode == "emergency heat") {       
+        def boostTime = room.overrideDur
+        boostLabel = "Restart\n$state.boostLength Min Boost"
+        sendEvent("name":"boostTimeRemaining", "value": boostTime + " mins")
+    }
     
     if (settings.disableDevice != null && settings.disableDevice == true) {
     	modeMsg = "DISABLED"
@@ -362,6 +480,7 @@ def poll() {
     
     airTempMsg = "Air Temp: " + averageAir +"°C."
     sendEvent("name":"statusMsg", "value": modeMsg + " " + airTempMsg, displayed: false)
+    sendEvent("name":"boostLabel", "value": boostLabel, displayed: false)
 }
 
 def refresh() {
