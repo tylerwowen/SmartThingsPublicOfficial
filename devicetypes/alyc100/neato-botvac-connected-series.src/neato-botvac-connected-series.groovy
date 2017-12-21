@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	21-12-2017: 1.8 - Add map support for D3 and D5 models with firmware V4x
  *	06-09-2017: 1.7b - D7 remove navigation mode it's not supported.
  *	06-09-2017: 1.7a - Fix support for D7 Eco/Turbo.
  *	06-09-2017: 1.7 - Add support for D5 Extra Care. Add support for D7 Eco/Turbo.
@@ -627,7 +628,7 @@ def getMapHTML() {
 		if (parent.getTimeZone()) { df.setTimeZone(location.timeZone) }
     	def resp
         def hData = ""
-        if ((state.modelName == "BotVacD7Connected") || (state.firmware.startsWith("2.2"))) {
+        if ((state.modelName == "BotVacD7Connected") || (state.firmware.startsWith("2.2")) || (state.firmware.startsWith("4"))) {
         	resp = parent.beehiveGET("/users/me/robots/${device.deviceNetworkId.tokenize("|")[0]}/maps")
             if (resp.status == 403) {
             	hData = """
