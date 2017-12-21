@@ -634,7 +634,7 @@ def getMapHTML() {
             	hData = """
                 <div class="centerText" style="font-family: helvetica, arial, sans-serif;">
 				  <p>Neato (Connect) not authorised for Map access.</p>
-				  <p>If you're upgrading from v1.1.6 or earlier to v1.1.7 or later, you need to reauthorize your Neato credentials. Open the Neato(Connect) smart app in the ST mobile app, scroll to the bottom and tap the reauthorize item.</p>
+				  <p>You may need to reauthorize your Neato credentials. Open the Neato(Connect) smart app in the ST mobile app, scroll to the bottom and tap the reauthorize item.</p>
 				</div>
                 """
             } else if (resp.status != 200) {
@@ -698,6 +698,9 @@ def getMapHTML() {
             def end_at = Date.parse("yyyy-MM-dd'T'HH:mm:ss'Z'",  resp.data.data.houseCleaning.history[0].end)
         	hData = """
             	<h4 style="font-size: 18px; font-weight: bold; text-align: center; background: #00a1db; color: #f5f5f5;">Statistics ${df.format(end_at)}</h4>
+                <div class="centerText" style="font-family: helvetica, arial, sans-serif;">
+                  <p>Please update your Botvac firmware via the Neato mobile app to get cleaning map functionality.</p>
+				</div>
                 <table>
 					<col width="50%">
 					<col width="50%">
@@ -768,7 +771,7 @@ def getMapHTML() {
         	hData = """
             	<h4 style="font-size: 18px; font-weight: bold; text-align: center; background: #00a1db; color: #f5f5f5;">Neato Botvac D3 Connected</h4>
             	<div class="centerText" style="font-family: helvetica, arial, sans-serif;">
-                  <p>Cleaning map and statistics not supported on Botvac D3 Connected.</p>
+                  <p>Please update your Botvac firmware via the Neato mobile app to get cleaning map functionality.</p>
 				</div>
             """
         }
