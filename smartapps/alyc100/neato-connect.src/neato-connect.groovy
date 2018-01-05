@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	05-01-2018:	1.2.1d - Another attempt to remove null reference when Botvac is removed.
  *	05-01-2018:	1.2.1c - Attempt to remove null reference when Botvac is removed.
  *	14-10-2017:	1.2.1b - Fix to setting Smart Home Monitor.
  *	20-09-2017:	1.2.1 BETA - Allow option for a SmartSchedule 'day' be measured from midnight rather than last cleaning time.
@@ -622,7 +623,7 @@ def updateDevices() {
 			state.botvacDevices["${key}"] = value
       	}
 	}    
-    log.debug selectors
+    log.debug "selectors: $selectors"
     //Remove devices if does not exist on the Neato platform
     getChildDevices().findAll { !selectors.contains("${it.deviceNetworkId}") }.each {
 		log.info("Deleting ${it.deviceNetworkId}")
@@ -633,7 +634,8 @@ def updateDevices() {
         } catch (physicalgraph.exception.ConflictException ce) {
         	log.info("Device ${it.deviceNetworkId} in use. Please manually delete.")
         }
-	}  
+	} 
+    selectedBotvacs.retainAll(selectors as Object[])
 }
 
 def addBotvacs() {
@@ -1316,7 +1318,7 @@ def getApiEndpoint()         { return "https://apps.neatorobotics.com" }
 def getSmartThingsClientId() { return appSettings.clientId }
 def beehiveURL(path = '/') 	 { return "https://beehive.neatocloud.com${path}" }
 private def textVersion() {
-    def text = "Neato (Connect)\nVersion: 1.2.1c\nDate: 05012018(1600)"
+    def text = "Neato (Connect)\nVersion: 1.2.1d\nDate: 05012018(2200)"
 }
 
 private def textCopyright() {
