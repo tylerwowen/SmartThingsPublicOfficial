@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	05-01-2018:	1.2.1c - Attempt to remove null reference when Botvac is removed.
  *	14-10-2017:	1.2.1b - Fix to setting Smart Home Monitor.
  *	20-09-2017:	1.2.1 BETA - Allow option for a SmartSchedule 'day' be measured from midnight rather than last cleaning time.
  *	06-07-2017: 1.2h - Bug fix. Fix to smart schedule event handler typo preventing SHM mode changing. Fix to allow delayed start for multiple botvacs.
@@ -698,9 +699,7 @@ def devicesSelected() {
 }
 
 def getDevicesSelectedString() {
-	if (state.botvacDevices == null) {
-    	updateDevices()
-    }
+	updateDevices()
 	def listString = ""
 	selectedBotvacs.each { childDevice -> 
         if (null != state.botvacDevices) {
