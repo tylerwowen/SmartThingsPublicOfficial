@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	06-01-2018:	1.2.1e - Fix null pointer exception on new installations.
  *	05-01-2018:	1.2.1d - Another attempt to remove null reference when Botvac is removed.
  *	05-01-2018:	1.2.1c - Attempt to remove null reference when Botvac is removed.
  *	14-10-2017:	1.2.1b - Fix to setting Smart Home Monitor.
@@ -635,7 +636,9 @@ def updateDevices() {
         	log.info("Device ${it.deviceNetworkId} in use. Please manually delete.")
         }
 	} 
-    selectedBotvacs.retainAll(selectors as Object[])
+    if (selectedBotvacs) {
+    	selectedBotvacs.retainAll(selectors as Object[])
+    }
 }
 
 def addBotvacs() {
@@ -1318,7 +1321,7 @@ def getApiEndpoint()         { return "https://apps.neatorobotics.com" }
 def getSmartThingsClientId() { return appSettings.clientId }
 def beehiveURL(path = '/') 	 { return "https://beehive.neatocloud.com${path}" }
 private def textVersion() {
-    def text = "Neato (Connect)\nVersion: 1.2.1d\nDate: 05012018(2200)"
+    def text = "Neato (Connect)\nVersion: 1.2.1e\nDate: 06012018(1040)"
 }
 
 private def textCopyright() {
