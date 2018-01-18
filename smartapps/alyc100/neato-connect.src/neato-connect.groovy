@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	17-01-2018:	1.2.2 - Allow contact sensors to restrict Botvac start.
  *	06-01-2018:	1.2.1e - Fix null pointer exception on new installations.
  *	05-01-2018:	1.2.1d - Another attempt to remove null reference when Botvac is removed.
  *	05-01-2018:	1.2.1c - Attempt to remove null reference when Botvac is removed.
@@ -231,19 +232,27 @@ def smartSchedulePAGE(params) {
                 }
                 section("SmartSchedule restrictions:") {
 					//Define time of day
-                	paragraph "Set SmartSchedule restrictions so that your Botvac don't start in the middle of the night."
+                	paragraph "Set SmartSchedule restrictions so that your Botvacs don't start unless below conditions are met."
                     def greyedOutTime = greyedOutTime(settings["starting#$botvacId"], settings["ending#$botvacId"])
                     def timeLabel = getTimeLabel(settings["starting#$botvacId"], settings["ending#$botvacId"])
                 	href ("timeIntervalPAGE", params: ["botvacId": botvacId], title: "Operate Botvac only during a certain time", description: timeLabel, state: greyedOutTime, refreshAfterSelection:true)
                 	//Define allowed days of operation
                 	input ("days#$botvacId", "enum", title: "Operate Botvac only on certain days of the week", multiple: true, required: false,
 		         		options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+                    //Define contact sensors
+                    input ("ssRestrictContactSensors#$botvacId", "capability.contactSensor", title:"Set SmartSchedule restriction contact sensors", multiple: true, required: false, submitOnChange: true)
+                    if (settings["ssRestrictContactSensors#$botvacId"]) {
+                    	input ("ssRestrictContactSensorsCondition#$botvacId", "enum", title:"Start Botvac only when:", multiple: false, required: true, options: ["allclosed": "All selected contacts are closed", "anyclosed": "Any selected contacts are closed", "allopen": "All selected contacts are open", "anyopen": "Any selected contacts are open"], defaultValue: "allclosed")
+                    }
+                	
                 }
                 section("SmartSchedule overrides:") {
                 //Define override switches to restart SmartSchedule countdown
                 paragraph "Routine override switches/buttons will cancel the next scheduled clean and reset the interval countdown when switched on."
-                	input ("ssOverrideSwitch#$botvacId", "capability.switch", title:"Set SmartSchedule override switches", multiple: true, required: false)
-                    input ("ssOverrideSwitchCondition#$botvacId", "enum", title:"Override schedule when:", multiple: false, required: true, options: ["any": "Any switch turns on", "all": "All switches are on"], defaultValue: "any") 
+                	input ("ssOverrideSwitch#$botvacId", "capability.switch", title:"Set SmartSchedule override switches", multiple: true, required: false, submitOnChange: true)
+                     if (settings["ssOverrideSwitch#$botvacId"]) {
+                    	input ("ssOverrideSwitchCondition#$botvacId", "enum", title:"Override schedule when:", multiple: false, required: true, options: ["any": "Any selected switch turns on", "all": "All selected switches are on"], defaultValue: "any") 
+                    }
                 }
                 section("Notifications:") {
                 paragraph "Turn on SmartSchedule notifications. You can configure specific recipients via Notification settings section."
@@ -1207,7 +1216,7 @@ def messageHandler(msg, forceFlag) {
 }
 
 private getAllOk(botvacId) {
-	getTriggerConditionsOk(botvacId) && getDaysOk(botvacId) && getTimeOk(botvacId) && getScheduleOk(botvacId)
+	getTriggerConditionsOk(botvacId) && getDaysOk(botvacId) && getTimeOk(botvacId) && getScheduleOk(botvacId) && getContactSensorsOk(botvacId)
 }
 
 private getScheduleOk(botvacId) {
@@ -1275,6 +1284,27 @@ private getTimeOk(botvacId) {
 	result
 }
 
+private getContactSensorsOk(botvacId) {
+	def result = true
+	def currContacts = settings["ssRestrictContactSensors#$botvacId"]?.currentContact
+    if (currContacts) {
+    	if (settings["ssRestrictContactSensorsCondition#$botvacId"] == "allclosed") { 
+    		if (currContacts.contains("open")) { result = false }
+    	}
+    	else if (settings["ssRestrictContactSensorsCondition#$botvacId"] == "anyclosed") { 
+    		result = currContacts.findAll {contactVal -> contactVal == "closed" ? true : false}
+    	}
+    	else if (settings["ssRestrictContactSensorsCondition#$botvacId"] == "allopen") { 
+    		if (currContacts.contains("closed")) { result = false }
+    	}
+    	else if (settings["ssRestrictContactSensorsCondition#$botvacId"] == "anyopen") { 
+    		result = currContacts.findAll {contactVal -> contactVal == "open" ? true : false}
+    	}
+    }
+	log.trace "contactSesnorsOk for $botvacId = $result"
+	result
+}
+
 private hhmm(time, fmt = "h:mm a z") {
 	def t = timeToday(time, location.timeZone)
 	def f = new java.text.SimpleDateFormat(fmt)
@@ -1321,7 +1351,7 @@ def getApiEndpoint()         { return "https://apps.neatorobotics.com" }
 def getSmartThingsClientId() { return appSettings.clientId }
 def beehiveURL(path = '/') 	 { return "https://beehive.neatocloud.com${path}" }
 private def textVersion() {
-    def text = "Neato (Connect)\nVersion: 1.2.1e\nDate: 06012018(1040)"
+    def text = "Neato (Connect)\nVersion: 1.2.2\nDate: 17012018(1700)"
 }
 
 private def textCopyright() {
