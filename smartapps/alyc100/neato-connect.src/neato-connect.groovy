@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	19-01-2018:	1.2.3 - Allow contact sensors trigget clean if conditions are met.
  *	17-01-2018:	1.2.2 - Allow contact sensors to restrict Botvac start.
  *	06-01-2018:	1.2.1e - Fix null pointer exception on new installations.
  *	05-01-2018:	1.2.1d - Another attempt to remove null reference when Botvac is removed.
@@ -568,6 +569,7 @@ def initialize() {
         	else if (settings["ssScheduleTrigger#$botvacId"] == "presence") { subscribe(settings["ssPeopleAway#$botvacId"], "presence", smartScheduleHandler, [filterEvents: false]) }
             
         	subscribe(settings["ssOverrideSwitch#$botvacId"], "switch.on", smartScheduleHandler, [filterEvents: false])
+            subscribe(settings["ssRestrictContactSensors#$botvacId"], "contact", smartScheduleHandler, [filterEvents: false])
     	}
     
    		if (state.botvacOnTimeMarker[botvacId] == null) state.botvacOnTimeMarker[botvacId] = now()
@@ -965,7 +967,7 @@ def smartScheduleHandler(evt) {
         		}
         	}
         }
-    	//If mode change event, schedule trigger or presence trigger
+    	//If mode change event, schedule trigger, contact sensor or presence trigger
     	//Check conditions, time and day have been met and execute clean. If no trigger is specified rely on pollOn method to start clean.
         if (settings["ssScheduleTrigger#$botvacId"] != "none") {
            	def delay = 0
@@ -1351,7 +1353,7 @@ def getApiEndpoint()         { return "https://apps.neatorobotics.com" }
 def getSmartThingsClientId() { return appSettings.clientId }
 def beehiveURL(path = '/') 	 { return "https://beehive.neatocloud.com${path}" }
 private def textVersion() {
-    def text = "Neato (Connect)\nVersion: 1.2.2\nDate: 17012018(1700)"
+    def text = "Neato (Connect)\nVersion: 1.2.3\nDate: 19012018(1700)"
 }
 
 private def textCopyright() {
