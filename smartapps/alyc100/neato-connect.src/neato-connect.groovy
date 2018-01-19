@@ -13,7 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
- *	19-01-2018:	1.2.3 - Allow contact sensors trigget clean if conditions are met.
+ *	19-01-2018:	1.2.3 - Allow contact sensors to trigger clean if conditions are met.
  *	17-01-2018:	1.2.2 - Allow contact sensors to restrict Botvac start.
  *	06-01-2018:	1.2.1e - Fix null pointer exception on new installations.
  *	05-01-2018:	1.2.1d - Another attempt to remove null reference when Botvac is removed.
