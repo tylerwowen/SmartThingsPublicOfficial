@@ -39,6 +39,7 @@
  *  07.12.2016: v2.4.1b - Handle when OVO API hasn't generated yesterday's total figures at midnight.
  *  07.12.2016: v2.4.1c - Add 'Pending' connection status for short API issues
  *  11.01.2017: v2.4.2 - Resolve Android issues for Chart data.
+ *  18.02.2018: v2.4.3 - Enable chart display when API returns corrupt historic data.
  */
 preferences 
 {
@@ -271,6 +272,7 @@ def refreshLiveData() {
        
         	log.debug "currentHour: $currentHour, state.hour: $state.hour, state.currentHourPowerTotal: $state.currentHourPowerTotal, state.currentHourPowerEntryNumber: $state.currentHourPowerEntryNumber, state.dailyPowerHistory: $state.dailyPowerHistory"
         	log.debug "formattedAverageTotalPower: $formattedAverageTotalPower, formattedCurrentTotalPowerCost: $formattedCurrentTotalPowerCost"
+            log.debug "chartData: $state.chartData"
        	}
 }
 
@@ -386,7 +388,10 @@ def getImageChartHTML() {
     	def date = new Date()
 		if (state.chartData == null) {
     		state.chartData = [0, 0, 0, 0, 0, 0, 0]
-    	}
+    	} else {
+        	def removeNull = state.chartData.collect { it == null ? it = 0 : it }
+            state.chartData = removeNull
+		}
         def topValue = state.chartData.max()
 		def hData = """
         	<h4 style="font-size: 22px; font-weight: bold; text-align: center; background: #00a1db; color: #f5f5f5;">Historical Costs</h4><br>
@@ -426,22 +431,18 @@ def getCssData() {
 	if(htmlInfo?.cssUrl && htmlInfo?.cssVer) {
 		if(state?.cssData) {
 			if (state?.cssVer?.toInteger() == htmlInfo?.cssVer?.toInteger()) {
-				//LogAction("getCssData: CSS Data is Current | Loading Data from State...")
 				cssData = state?.cssData
 			} else if (state?.cssVer?.toInteger() < htmlInfo?.cssVer?.toInteger()) {
-				//LogAction("getCssData: CSS Data is Outdated | Loading Data from Source...")
 				cssData = getFileBase64(htmlInfo.cssUrl, "text", "css")
 				state.cssData = cssData
 				state?.cssVer = htmlInfo?.cssVer
 			}
 		} else {
-			//LogAction("getCssData: CSS Data is Missing | Loading Data from Source...")
 			cssData = getFileBase64(htmlInfo.cssUrl, "text", "css")
 			state?.cssData = cssData
 			state?.cssVer = htmlInfo?.cssVer
 		}
 	} else {
-		//LogAction("getCssData: No Stored CSS Info Data Found for Device... Loading for Static URL...")
 		cssData = getFileBase64(cssUrl(), "text", "css")
 	}
 	return cssData
@@ -463,9 +464,7 @@ def getFileBase64(url, preType, fileType) {
 				while ((len = respData.read(buf, 0, size)) != -1)
 					bos.write(buf, 0, len)
 				buf = bos.toByteArray()
-				//LogAction("buf: $buf")
 				String s = buf?.encodeBase64()
-				//LogAction("resp: ${s}")
 				return s ? "data:${preType}/${fileType};base64,${s.toString()}" : null
 			}
 		}
