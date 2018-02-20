@@ -205,7 +205,7 @@ def installed() {
 	// Check for new devices and remove old ones every 3 hours
 	runEvery3Hours('updateDevices')
     // execute refresh method every minute
-    schedule("0 0/1 * * * ?", refreshDevices)
+    schedule("0 0/2 * * * ?", refreshDevices)
 }
 
 // called after settings are changed
@@ -213,7 +213,7 @@ def updated() {
 	log.debug "updated"
 	initialize()
     unschedule('refreshDevices')
-    schedule("0 0/1 * * * ?", refreshDevices)
+    schedule("35 0/2 * * * ?", refreshDevices)
 }
 
 def uninstalled() {
@@ -631,15 +631,15 @@ def refreshDevices() {
     }
 	getChildDevices().each { device ->
     	if (atomicState.refreshCounter == 5) {
-        	log.info("Refreshing device ${device.name} ...")
+        	log.info("Low Freq Refreshing device ${device.name} ...")
             try {
     			device.refresh()
         	} catch (e) {
         		//WORKAROUND - Catch unexplained exception when refreshing devices.
         		logResponse(e.response)
         	}
-        } else if (device.name.contains("Monitor") || device.name.contains("Motion Sensor") || device.name.contains("Adapter Plus")) {
-        	log.info("Refreshing device ${device.name}...")
+        } else if (device.name.contains("Monitor") || device.name.contains("Motion Sensor") || device.name.contains("Adapter Plus")|| device.name.contains("eTRV")) {
+        	log.info("Hight Freq Refreshing device ${device.name}...")
 			device.refresh()
         }
 	}
