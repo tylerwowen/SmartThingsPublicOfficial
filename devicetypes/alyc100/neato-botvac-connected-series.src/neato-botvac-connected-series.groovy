@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	21-12-2017: 1.8.1 - Fix support for D7 with houseCleaning basic-3 support.
  *	21-12-2017: 1.8 - Add map support for D3 and D5 models with firmware V4x
  *	06-09-2017: 1.7b - D7 remove navigation mode it's not supported.
  *	06-09-2017: 1.7a - Fix support for D7 Eco/Turbo.
@@ -215,12 +216,12 @@ def on() {
             case "basic-1":
                	nucleoPOST("/messages", '{"reqId":"1", "cmd":"startCleaning", "params":{"category": 2, "mode": ' + modeParam + ', "modifier": 2}}')
 			break;
-        	case "basic-2":
-            	nucleoPOST("/messages", '{"reqId":"1", "cmd":"startCleaning", "params":{"category": 2, "mode": ' + modeParam + ', "modifier": 2, "navigationMode": ' + navParam + '}}')
-            break;
 			case "minimal-2":
 				nucleoPOST("/messages", '{"reqId":"1", "cmd":"startCleaning", "params":{"category": 2, "navigationMode": ' + navParam + '}}')
 			break;
+            default:
+            	nucleoPOST("/messages", '{"reqId":"1", "cmd":"startCleaning", "params":{"category": 2, "mode": ' + modeParam + ', "modifier": 2, "navigationMode": ' + navParam + '}}')
+            break;
         }
     }
     runIn(2, refresh)
@@ -662,7 +663,7 @@ def getMapHTML() {
 					</thead>
 					<tbody>
 						<tr>
-							<td>${Math.round(cleaned_area * 100) / 100} m&#178; / ${Math.round(cleaned_area * 1076.39) / 100} ft&#178;</td>
+							<td>${Math.round(cleaned_area * 100) / 100} m² / ${Math.round(cleaned_area * 1076.39) / 100} ft²</td>
 							<td>${getCleaningTime(start_at, end_at)} hours</td>
 						</tr>
 					</tbody>
@@ -710,7 +711,7 @@ def getMapHTML() {
 					</thead>
 					<tbody>
 						<tr>
-							<td>${Math.round(cleaned_area * 100) / 100} m&#178; / ${Math.round(cleaned_area * 1076.39) / 100} ft&#178;</td>
+							<td>${Math.round(cleaned_area * 100) / 100} m² / ${Math.round(cleaned_area * 1076.39) / 100} ft²</td>
 							<td>${getCleaningTime(start_at, end_at)} hours</td>
 						</tr>
 					</tbody>
@@ -739,8 +740,8 @@ def getMapHTML() {
 					</thead>
 					<tbody>
 						<tr>
-							<td>${Math.round(resp.data.data.houseCleaning.totalCleanedArea * 100) / 100} m&#178; / ${Math.round(resp.data.data.houseCleaning.totalCleanedArea * 1076.39) / 100} ft&#178;</td>
-							<td>${Math.round(resp.data.data.houseCleaning.averageCleanedArea * 100) / 100} m&#178; / ${Math.round(resp.data.data.houseCleaning.averageCleanedArea * 1076.39) / 100} ft&#178;</td>
+							<td>${Math.round(resp.data.data.houseCleaning.totalCleanedArea * 100) / 100} m² / ${Math.round(resp.data.data.houseCleaning.totalCleanedArea * 1076.39) / 100} ft²</td>
+							<td>${Math.round(resp.data.data.houseCleaning.averageCleanedArea * 100) / 100} m² / ${Math.round(resp.data.data.houseCleaning.averageCleanedArea * 1076.39) / 100} ft²</td>
 						</tr>
 					</tbody>
 				</table>
