@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  18-04-2018: 1.9b - Incorrect Persistent Map mode label fix.
  *  18-04-2018: 1.9 - Support for D7 persistent map cleaning and deep cleaning mode.
  *	15-04-2018: 1.8.1 - Fix support for D7 with houseCleaning basic-3 support.
  *	21-12-2017: 1.8 - Add map support for D3 and D5 models with firmware V4x
@@ -164,8 +165,8 @@ metadata {
 		}
         
         standardTile("persistentMapMode", "device.persistentMapMode", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
-			state("on", label:'Pers Map Off', action:"togglePersistentMapMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_floor_icon.png")
-            state("off", label:'Pers Map On', action:"togglePersistentMapMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_floor_icon.png")
+			state("off", label:'Pers Map Off', action:"togglePersistentMapMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_floor_icon.png")
+            state("on", label:'Pers Map On', action:"togglePersistentMapMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_floor_icon.png")
             state("empty", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_logo.png")
 		}
         
