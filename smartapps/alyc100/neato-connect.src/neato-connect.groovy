@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	18-04-2018:	1.2.4 - Show restriction summary text in app when contact sensor restrictions are configured.
  *	19-01-2018:	1.2.3 - Allow contact sensors to trigger clean if conditions are met.
  *	17-01-2018:	1.2.2 - Allow contact sensors to restrict Botvac start.
  *	06-01-2018:	1.2.1e - Fix null pointer exception on new installations.
@@ -753,11 +754,22 @@ def getSmartScheduleString(botvacId) {
         listString += "\n\nThe following restrictions apply:\n"
         if (settings["starting#$botvacId"]) listString += "• ${getTimeLabel(settings["starting#$botvacId"], settings["ending#$botvacId"])}\n" 
         if (settings["days#$botvacId"]) listString += "• Only on ${settings["days#$botvacId"]}.\n"
+        if (settings["ssRestrictContactSensors#$botvacId"]) {
+        	if (settings["ssRestrictContactSensorsCondition#$botvacId"] == "allclosed") {
+            	listString += "• When ${settings["ssRestrictContactSensors#$botvacId"]} are all closed.\n"
+            } else if (settings["ssRestrictContactSensorsCondition#$botvacId"] == "anyclosed") { 
+            	listString += "• When any one of ${settings["ssRestrictContactSensors#$botvacId"]} are closed.\n"
+            } else if (settings["ssRestrictContactSensorsCondition#$botvacId"] == "allopen") { 
+            	listString += "• When ${settings["ssRestrictContactSensors#$botvacId"]} are all open.\n"
+            } else {
+            	listString += "• When any one of ${settings["ssRestrictContactSensors#$botvacId"]} are closed.\n"
+            }
+        }
         if (settings["ssOverrideSwitch#$botvacId"]) {
         	if (settings["ssOverrideSwitchCondition#$botvacId"] == "any") {
-            	listString += "• Override schedule if any of ${settings["ssOverrideSwitch#$botvacId"]} turns on."
+            	listString += "• Override schedule if any of ${settings["ssOverrideSwitch#$botvacId"]} turns on.\n"
             } else {
-        		listString += "• Override schedule if ${settings["ssOverrideSwitch#$botvacId"]} are all on."
+        		listString += "• Override schedule if ${settings["ssOverrideSwitch#$botvacId"]} are all on.\n"
             }
         }
     }
@@ -1353,7 +1365,7 @@ def getApiEndpoint()         { return "https://apps.neatorobotics.com" }
 def getSmartThingsClientId() { return appSettings.clientId }
 def beehiveURL(path = '/') 	 { return "https://beehive.neatocloud.com${path}" }
 private def textVersion() {
-    def text = "Neato (Connect)\nVersion: 1.2.3\nDate: 19012018(1700)"
+    def text = "Neato (Connect)\nVersion: 1.2.4\nDate: 18042018(1500)"
 }
 
 private def textCopyright() {
