@@ -1,7 +1,7 @@
 /**
  *  OVO Energy Meter V2.0
  *
- *  Copyright 2015 Alex Lee Yuk Cheung
+ *  Copyright 2015,2016,2017,2018 Alex Lee Yuk Cheung
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -40,7 +40,12 @@
  *  07.12.2016: v2.4.1c - Add 'Pending' connection status for short API issues
  *  11.01.2017: v2.4.2 - Resolve Android issues for Chart data.
  *  18.02.2018: v2.4.3 - Enable chart display when API returns corrupt historic data.
+ *
+ *	01.06.2018: v2.5 	- Remove all live feed tiles as they are now unsupported on OVO.
+ *						- Add yesterday's total power consumption into main tile.
+ *						- Update chart data with historical values only.
  */
+ 
 preferences 
 {
 	input( "costAlertLevel", "decimal", title: "Set cost alert level (£)", description: "Send alert when daily cost reaches amount", required: false, defaultValue: 10.00 )
@@ -59,7 +64,7 @@ metadata {
 	tiles(scale: 2) {
   		multiAttributeTile(name:"power", type:"generic", width:6, height:4, canChangeIcon: true) {
     		tileAttribute("device.power", key: "PRIMARY_CONTROL") {
-      			attributeState "default", label: '${currentValue} W', icon:"st.Appliances.appliances17", backgroundColor:"#0a9928"
+      			attributeState "default", label: '${currentValue} Wh', icon:"st.Appliances.appliances17", backgroundColor:"#0a9928"
     		}
   		}
         
@@ -98,7 +103,7 @@ metadata {
         htmlTile(name:"chartHTML", action: "getImageChartHTML", width: 6, height: 5, whiteList: ["www.gstatic.com", "raw.githubusercontent.com"])
         
 		main (["power"])
-		details(["power", "consumptionPrice", "unitPrice", "totalDemand", "totalConsumptionPrice", "yesterdayTotalPower", "yesterdayTotalPowerCost", "chartHTML", "network", "refresh"])
+		details(["power", "unitPrice", "yesterdayTotalPower", "yesterdayTotalPowerCost", "chartHTML", "refresh"])
 	}
 }
 
@@ -126,7 +131,7 @@ def refresh() {
 
 def refreshLiveData() {
 	//Get current hour
-    //data.hour = null
+    //state.hour = null
     def df = new java.text.SimpleDateFormat("HH")
     if (location.timeZone) {
 		df.setTimeZone(location.timeZone)
@@ -135,175 +140,19 @@ def refreshLiveData() {
 		df.setTimeZone(TimeZone.getTimeZone("Europe/London"))
 	}
 	def currentHour = df.format(new Date()).toInteger()
-
-	def resp = parent.apiGET("https://live.ovoenergy.com/api/live/meters/${device.deviceNetworkId}/consumptions/instant")
-	if (resp.status != 200) {
-    	log.error("Unexpected result in poll(): [${resp.status}] ${resp.data}")
-        sendEvent(name: 'power', value: "N/A", unit: "W")
-        if (state.offlineMode) {
-        	//Refresh historical power chart at midnight in offline mode
-        	if ((state.hour == null) || (state.hour != currentHour)) {
-        	//Reset at midnight or initial call
-        		if ((state.hour == null) || (currentHour == 0)) { 
-            		//Recalcualte historical data at midnight in offline mode
-            		addHistoricalPowerToChartData()
-                	setYesterdayPowerValues()
-            	}
-            	state.hour = currentHour
-        	}
-        } else {
-        	sendEvent(name: 'network', value: "Pending" as String)
-        	if (!state.offlineScheduled) {
-        		runIn(60*60, setOffline)
-                state.offlineScheduled = true
-            }
-        }
-		return []
-	}
-    unschedule("setOffline")
-    state.offlineScheduled = false
-    if (state.offlineMode) {
-        //Offline mode is set when API is unavailable
-        state.offlineMode = false
-        //Recovery mode is set when API has been offline as is turned off at midnight when a full power data set can be collected.
-        state.recoveryMode = true
-        sendEvent(name: 'costAlertLevelPassed', value: "online", displayed: false)
-        sendEvent(name: 'currentDailyTotalPowerCost', value: "RECOVERING", displayed: false)
-        //Recalcualte historical data
-        addHistoricalPowerToChartData()
-        setYesterdayPowerValues()
-    }
-    sendEvent(name: 'network', value: "Connected" as String)
-    data.meterlive = resp.data
-        
-        //update unit price from OVO Live API
-        def unitPriceBigDecimal = data.meterlive.consumption.unitPrice.amount as BigDecimal
-        def unitPrice = (Math.round((unitPriceBigDecimal) * 100))/100
-        def unitPriceCurrency = data.meterlive.consumption.unitPrice.currency
-        unitPrice = String.format("%1.2f",unitPrice)
-        
-        //update unit price and standing charge from more up to date OVO Account API if available
-        def latestUnitPrice = ((device.name.contains('Gas')) ? parent.getUnitPrice('GAS') : parent.getUnitPrice('ELECTRICITY')) as BigDecimal
-        if (latestUnitPrice > 0) {
-        	unitPriceBigDecimal = latestUnitPrice
-        	unitPrice = String.format("%1.5f", unitPriceBigDecimal)
-        }
-        
-        // get electricity readings
-        def demand = ((int)Math.round((data.meterlive.consumption.demand as BigDecimal) * 1000))
-        def consumptionPrice = (Math.round(((unitPriceBigDecimal as BigDecimal) * (data.meterlive.consumption.demand as BigDecimal)) * 100))/100
-        def consumptionPriceCurrency = data.meterlive.consumption.consumptionPrice.currency
-        
-        //demand = String.format("%4f",demand)
-        consumptionPrice = String.format("%1.2f",consumptionPrice)
-        
-        def standingCharge = ((device.name.contains('Gas')) ? parent.getStandingCharge('GAS') : parent.getStandingCharge('ELECTRICITY')) as BigDecimal
-        log.debug "unitPrice: ${unitPriceBigDecimal} standingCharge: ${standingCharge}"
-        // set local variables  
-        
-        sendEvent(name: 'power', value: "$demand", unit: "W")
-        sendEvent(name: 'consumptionPrice', value: "£$consumptionPrice", displayed: false)
-        sendEvent(name: 'unitPrice', value: "£$unitPrice", displayed: false)
-        
-        if (state.dailyPowerHistory == null)
-        {
-        	state.dailyPowerHistory = [:]
-        }
-        if (state.yesterdayPowerHistory == null)
-        {
-        	state.yesterdayPowerHistory = [:]
-        }
         
         if ((state.hour == null) || (state.hour != currentHour)) {
-        	//Update latest standard charges and unit prices
-            parent.updateLatestPrices()
             //Add historical figures to chart data object
             addHistoricalPowerToChartData()
             setYesterdayPowerValues()
             
         	//Reset at midnight or initial call
         	if ((state.hour == null) || (currentHour == 0)) { 
-                if (!state.recoveryMode) {
-                	//Reset power history
-                	state.yesterdayPowerHistory =  state.dailyPowerHistory
-                }
-                state.recoveryMode = false
-                state.dailyPowerHistory = [:]
+                sendEvent(name: 'costAlertLevelPassed', value: "false", displayed: false)
             }       	
+            
         	state.hour = currentHour
-            state.currentHourPowerTotal = 0
-            state.currentHourPowerEntryNumber = 1
         }
-        else {
-        	if (!state.recoveryMode) {
-       			state.currentHourPowerEntryNumber = state.currentHourPowerEntryNumber + 1    
-            }
-        }
-        if (!state.recoveryMode) {       
-        	state.currentHourPowerTotal = state.currentHourPowerTotal + (data.meterlive.consumption.demand as BigDecimal)
-        	state.dailyPowerHistory["Hour $state.hour"] = ((state.currentHourPowerTotal as BigDecimal) / state.currentHourPowerEntryNumber)
-        
-        	def totalDailyPower = getTotalDailyPower()
-        	def hourCount = 0
-        
-        	def formattedAverageTotalPower = (Math.round((totalDailyPower as BigDecimal) * 1000))/1000
-        	def formattedCurrentTotalPowerCost = (Math.round((((totalDailyPower as BigDecimal) * unitPriceBigDecimal) + standingCharge) * 100))/100
-        	//Add figures to chart data object
-        	addCurrentTotalToChartData(formattedCurrentTotalPowerCost)
-        	def costDailyComparison = calculatePercentChange(((totalDailyPower as BigDecimal) * unitPriceBigDecimal) + standingCharge, ((getYesterdayPower(state.hour) as BigDecimal) * unitPriceBigDecimal) + standingCharge)
-        	def formattedCostDailyComparison = costDailyComparison
-        	if (costDailyComparison >= 0) {
-        		formattedCostDailyComparison = "+" + formattedCostDailyComparison
-        	}
-        
-        	//Send event to raise notification on high cost
-        	if (formattedCurrentTotalPowerCost > (getCostAlertLevelValue() as BigDecimal)) {
-        		sendEvent(name: 'costAlertLevelPassed', value: "£${getCostAlertLevelValue()}")
-        	} else {
-        		sendEvent(name: 'costAlertLevelPassed', value: "false", displayed: false)
-        	}
-        
-        	formattedAverageTotalPower = String.format("%1.2f",formattedAverageTotalPower)
-        	formattedCurrentTotalPowerCost = String.format("%1.2f",formattedCurrentTotalPowerCost)
-        	formattedCurrentTotalPowerCost += " (" + formattedCostDailyComparison + "%)"
-        
-        	sendEvent(name: 'averageDailyTotalPower', value: "$formattedAverageTotalPower", unit: "KWh", displayed: false)
-        	sendEvent(name: 'currentDailyTotalPowerCost', value: "£$formattedCurrentTotalPowerCost", displayed: false)
-       
-        	log.debug "currentHour: $currentHour, state.hour: $state.hour, state.currentHourPowerTotal: $state.currentHourPowerTotal, state.currentHourPowerEntryNumber: $state.currentHourPowerEntryNumber, state.dailyPowerHistory: $state.dailyPowerHistory"
-        	log.debug "formattedAverageTotalPower: $formattedAverageTotalPower, formattedCurrentTotalPowerCost: $formattedCurrentTotalPowerCost"
-            log.debug "chartData: $state.chartData"
-       	}
-}
-
-def setOffline() {
-	state.offlineScheduled = false
-	//Refresh historical power chart when first entering offline mode
-    if (!state.offlineMode) {
-    	addHistoricalPowerToChartData()
-        setYesterdayPowerValues()
-    }
-	state.offlineMode = true
-    sendEvent(name: 'averageDailyTotalPower', value: "N/A", unit: "KWh", displayed: false)
-    sendEvent(name: 'currentDailyTotalPowerCost', value: "OFFLINE", displayed: false)
-    sendEvent(name: 'costAlertLevelPassed', value: "offline", displayed: false)
-    sendEvent(name: 'network', value: "Not Connected" as String)
-}
-
-private def getTotalDailyPower() {
-	def totalDailyPower = 0
-	state.dailyPowerHistory.each { hour, averagePower ->
-    	totalDailyPower += averagePower
-	};
-    return totalDailyPower
-}
-
-private def getYesterdayPower(currentHour) {
-	def totalDailyPower = 0
-    for (int i=0; i<=currentHour.toInteger(); i++) {
-    	if (state.yesterdayPowerHistory["Hour $i"] != null) totalDailyPower += state.yesterdayPowerHistory["Hour $i"]
-    }    
-    return totalDailyPower
 }
 
 private def calculatePercentChange(current, previous) {
@@ -338,8 +187,10 @@ def setYesterdayPowerValues() {
     	def consumptions = resp.data.consumptions
         if (consumptions[1].dataError != "NotFound") {
     		//consumptions[1].price, consumptions[0].price
-        	def yesterdayTotalPower = (Math.round((consumptions[1].consumption as BigDecimal) * 1000))/1000
+        	def yesterdayTotalPower = Math.round((consumptions[1].consumption as BigDecimal) * 1000) / 1000
         	sendEvent(name: 'yesterdayTotalPower', value: "$yesterdayTotalPower", unit: "KWh", displayed: false)
+            def yesterdayTotalPowerInWh = Math.round((consumptions[1].consumption as BigDecimal) * 1000)
+        	sendEvent(name: 'power', value: "$yesterdayTotalPowerInWh", unit: "Wh", displayed: true)
         
         	def yesterdayTotalPowerCost = (Math.round((consumptions[1].price as BigDecimal) * 100))/100
         
@@ -353,34 +204,39 @@ def setYesterdayPowerValues() {
                     
         	yesterdayTotalPowerCost = String.format("%1.2f",yesterdayTotalPowerCost)
         	sendEvent(name: 'yesterdayTotalPowerCost', value: "£$yesterdayTotalPowerCost (" + formattedCostYesterdayComparison + "%)", displayed: false)
+            
+            def unitPrice = (Math.round((consumptions[1].tariff as BigDecimal) * 100))/100
+            sendEvent(name: 'unitPrice', value: "£$unitPrice", displayed: false)
+            
+            //Send event to raise notification on high cost
+        	if ((yesterdayTotalPowerCost as BigDecimal) > (getCostAlertLevelValue() as BigDecimal)) {
+        		sendEvent(name: 'costAlertLevelPassed', value: "£${getCostAlertLevelValue()}")
+        	} else {
+        		sendEvent(name: 'costAlertLevelPassed', value: "false", displayed: false)
+        	}
+            
     	} else {
         	sendEvent(name: 'yesterdayTotalPower', value: "TBD", unit: "KWh", displayed: false)
             sendEvent(name: 'yesterdayTotalPowerCost', value: "being calculated...", displayed: false)
+        	sendEvent(name: 'costAlertLevelPassed', value: "false", displayed: false)
         }
     }
 }
 
 def addHistoricalPowerToChartData() {
     def date = new Date()
-	def resp = getAggregatePower((date - 6), date)
+	def resp = getAggregatePower((date - 7), date)
     if (resp.status != 200) {
     	log.error("Unexpected result in addHistoricalPowerToChartData(): [${resp.status}] ${resp.data}")
 	}
     else {
     	def consumptions = resp.data.consumptions
-        if (consumptions[5].dataError != "NotFound") {
-    		state.chartData = [0, consumptions[5].price, consumptions[4].price, consumptions[3].price, consumptions[2].price, consumptions[1].price, consumptions[0].price]
+        if (consumptions[6]) {
+    		state.chartData = [consumptions[6].price, consumptions[5].price, consumptions[4].price, consumptions[3].price, consumptions[2].price, consumptions[1].price, consumptions[0].price]
     	} else {
-        	state.chartData = [0, 0, consumptions[4].price, consumptions[3].price, consumptions[2].price, consumptions[1].price, consumptions[0].price]
-        }
+        	state.chartData = [0, consumptions[5].price, consumptions[4].price, consumptions[3].price, consumptions[2].price, consumptions[1].price, consumptions[0].price]
+    	}
     }
-}
-
-def addCurrentTotalToChartData(total) {
-	if (state.chartData == null) {
-    	state.chartData = [total, 0, 0, 0, 0, 0, 0]
-    }
-    state.chartData.putAt(0, total)
 }
 
 def getImageChartHTML() {
@@ -395,7 +251,7 @@ def getImageChartHTML() {
         def topValue = state.chartData.max()
 		def hData = """
         	<h4 style="font-size: 22px; font-weight: bold; text-align: center; background: #00a1db; color: #f5f5f5;">Historical Costs</h4><br>
-	  		<div id="main_graph" style="width: 100%;"><img src="http://chart.googleapis.com/chart?cht=bvg&chs=350x200&chxt=x,y,y&chco=0a9928|0a9928|0a9928|0a9928|0a9928|0a9928|eda610&chd=t:${state.chartData.getAt(6)},${state.chartData.getAt(5)},${state.chartData.getAt(4)},${state.chartData.getAt(3)},${state.chartData.getAt(2)},${state.chartData.getAt(1)},${state.chartData.getAt(0)}&chds=0,${topValue+1}&chxl=0:|${(date - 6).format("d MMM")}|${(date - 5).format("d MMM")}|${(date - 4).format("d MMM")}|${(date - 3).format("d MMM")}|${(date - 2).format("d MMM")}|${(date - 1).format("d MMM")}|${date.format("d MMM")}|2:|Cost&chxp=2,50&chxr=1,0,${topValue+1}&chbh=a,10,10&chxs=1N*cGBPsz2*"></div>		  
+	  		<div id="main_graph" style="width: 100%;"><img src="http://chart.googleapis.com/chart?cht=bvg&chs=350x200&chxt=x,y,y&chco=0a9928|0a9928|0a9928|0a9928|0a9928|0a9928|0a9928&chd=t:${state.chartData.getAt(6)},${state.chartData.getAt(5)},${state.chartData.getAt(4)},${state.chartData.getAt(3)},${state.chartData.getAt(2)},${state.chartData.getAt(1)},${state.chartData.getAt(0)}&chds=0,${topValue+1}&chxl=0:|${(date - 7).format("d MMM")}|${(date - 6).format("d MMM")}|${(date - 5).format("d MMM")}|${(date - 4).format("d MMM")}|${(date - 3).format("d MMM")}|${(date - 2).format("d MMM")}|${(date - 1).format("d MMM")}|2:|Cost&chxp=2,50&chxr=1,0,${topValue+1}&chbh=a,10,10&chxs=1N*cGBPsz2*"></div>		  
 			"""
 
 		def mainHtml = """
