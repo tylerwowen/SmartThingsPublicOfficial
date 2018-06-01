@@ -1,7 +1,7 @@
 /**
  *  OVO Energy (Connect)
  *
- *  Copyright 2017 Alex Lee Yuk Cheung
+ *  Copyright 2017,2018 Alex Lee Yuk Cheung
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -34,6 +34,9 @@
  *
  *	25.01.2017
  *	v2.2.5 - Stop notifications when total power and cost values are TBD from OVO API
+ *
+ *	01.06.2018
+ *	v2.5 - OVO have stopped the live API. Update to remove unecessary polling.
  */
 definition(
 		name: "OVO Energy (Connect)",
@@ -92,7 +95,7 @@ def firstPage() {
 
 def headerSECTION() {
 	return paragraph (image: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/smartapps/alyc100/icon175x175.jpeg",
-                  "OVO Energy (Connect)\nVersion: 2.2.5\nDate: 25012017(2220)")
+                  "OVO Energy (Connect)\nVersion: 2.5\nDate: 01062018(1420)")
 }               
 
 def stateTokenPresent() {
@@ -226,8 +229,8 @@ def installed() {
 	initialize()
 	// Check for new devices every 3 hours
 	runEvery3Hours('updateDevices')
-    // execute handlerMethod every 10 minutes.
-    schedule("0 0/1 * * * ?", refreshDevices)
+    // execute handlerMethod every 1 hour.
+    runEvery1Hour('refreshDevices')
 }
 
 // called after settings are changed
@@ -236,7 +239,8 @@ def updated() {
     unsubscribe()
 	initialize()
     unschedule('refreshDevices')
-    schedule("0 0/1 * * * ?", refreshDevices)
+    // execute handlerMethod every 1 hour.
+    runEvery1Hour('refreshDevices')
 }
 
 def uninstalled() {
@@ -375,45 +379,6 @@ def devicesList() {
 			return []
 		}
 	}
-}
-
-def updateLatestPrices() {
-	log.info("Update latest prices from OVO...")
-	logErrors([]) {
-    	state.contracts = [:]
-		def resp = apiGET("https://paym.ovoenergy.com/api/paym/accounts")
-		if (resp.status == 200) {
-			def contracts = resp.data.contracts[0]
-            contracts.each { contract -> 
-            	if (contract.utility != null) {
-                	def value = [contract.standingCharge.amount.amount, contract.rates.amount.amount]
-                    def key = contract.utility.toUpperCase()
-                    state.contracts["${key}"] = value
-                }
-            }
-      	}
-		else {
-			log.error("Non-200 from device list call. ${resp.status} ${resp.data}")
-		}
-	}
-}
-
-def getStandingCharge(utilityType) {
-	if ((state.contracts == null) || (state.contracts[utilityType] == null) || (state.contracts[utilityType].size() != 2)) { updateLatestPrices() }
-	if ((state.contracts[utilityType] == null) || (state.contracts[utilityType].size() < 1)) {
-    	return 0
-    } else {
-        return state.contracts[utilityType][0]
-    }
-}
-
-def getUnitPrice(utilityType) {
-	if ((state.contracts == null) || (state.contracts[utilityType] == null) || (state.contracts[utilityType].size() != 2)) { updateLatestPrices() }
-	if ((state.contracts[utilityType] == null) || (state.contracts[utilityType].size() < 2)) {
-    	return 0
-    } else {
-        return state.contracts[utilityType][1]
-    }
 }
 
 def updateAccountDetails() {
