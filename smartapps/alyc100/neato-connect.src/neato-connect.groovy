@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	28-06-2018:	1.2.4b - Bug fix. Stop nullPointerException on reschedule method.
  *	18-04-2018:	1.2.4 - Show restriction summary text in app when contact sensor restrictions are configured.
  *	19-01-2018:	1.2.3 - Allow contact sensors to trigger clean if conditions are met.
  *	17-01-2018:	1.2.2 - Allow contact sensors to restrict Botvac start.
@@ -608,7 +609,13 @@ def initialize() {
         }
         childDevice.poll()
     }
-    runIn(getNextTimeInSeconds(), timeHandler)
+    def nextTimeInSeconds = getNextTimeInSeconds()
+    if (nextTimeInSeconds >= 0) {
+    	runIn(nextTimeInSeconds, timeHandler)
+    }
+    else {
+    	log.warn "No time has been scheduled. Check that you have Botvacs added under the Neato (Connect) app."
+    }
     runEvery5Minutes('pollOn') // Asynchronously refresh devices so we don't block
     
 }
@@ -943,7 +950,13 @@ def smartScheduleHandler(evt) {
     	log.debug "Executing 'smartScheduleHandler' for scheduled event"
     }
     //Update scheduler
-    runIn(getNextTimeInSeconds(), timeHandler)
+    def nextTimeInSeconds = getNextTimeInSeconds()
+    if (nextTimeInSeconds >= 0) {
+    	runIn(nextTimeInSeconds, timeHandler)
+    }
+    else {
+    	log.warn "No time has been scheduled. Check that you have Botvacs added under the Neato (Connect) app."
+    }
     getChildDevices().each { childDevice ->
     	def botvacId = childDevice.deviceNetworkId
     	//If switch on for override event
@@ -1212,9 +1225,12 @@ def getNextTimeInSeconds() {
         	nextTime = t.getTime()
         }
 	}
-    def seconds = Math.ceil((nextTime - now()) / 1000)
-	log.debug "Scheduling ST job to run in ${seconds}s, at ${nextTime}"
-	return seconds as Integer
+    if (nextTime) {
+    	def seconds = Math.ceil((nextTime - now()) / 1000)
+		log.debug "Scheduling ST job to run in ${seconds}s, at ${nextTime}"
+		return seconds as Integer
+    }
+    else return -1
 }
 
 def messageHandler(msg, forceFlag) {
