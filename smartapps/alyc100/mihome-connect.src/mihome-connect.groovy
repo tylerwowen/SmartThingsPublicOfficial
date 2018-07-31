@@ -14,6 +14,7 @@
  *
  *	VERSION HISTORY
  *
+ *	31.07.2018: 2.0.1c - Bug fix. Stop SSL exception on API call.
  *	16.01.2017: 2.0.1b - Bug fix. Wrong implementation of double wall socket fixed.
  *	16.01.2017: 2.0.1 - Added support for MiHome Double Wall Socket
  *	09.01.2017: 2.0c - Added support for MiHome House Monitor
@@ -670,33 +671,40 @@ def getMiHomeAccessToken() {
 }
 
 def apiGET(path) {
-	try {   			
-        httpGet(uri: apiURL(path), headers: apiRequestHeaders()) {response ->
+	try {   	
+    	log.debug("Beginning API GET: ${path}")
+        httpGet(uri: apiURL(path), headers: apiRequestHeaders(), tlsVersion: "TLSv1.1") {response ->
 			logResponse(response)
 			return response
 		}
 	} catch (groovyx.net.http.HttpResponseException e) {
-		logResponse(e.response)
 		return e.response
-	}
+	} catch (javax.net.ssl.SSLException ssle) {
+    	log.error ssle
+	} catch (Exception ex) {
+    	return ex.response
+    }
 }
 
 def apiPOST(path, body = [:]) {
 	try {
 		log.debug("Beginning API POST: ${path}, ${body}")
-		httpGet(uri: apiURL(path), body: new groovy.json.JsonBuilder(body).toString(), headers: apiRequestHeaders() ) {response ->
+		httpGet(uri: apiURL(path), body: new groovy.json.JsonBuilder(body).toString(), headers: apiRequestHeaders(), tlsVersion: "TLSv1.1") {response ->
 			logResponse(response)
 			return response
 		}
 	} catch (groovyx.net.http.HttpResponseException e) {
-		logResponse(e.response)
 		return e.response
-	}
+	} catch (javax.net.ssl.SSLException ssle) {
+    	log.error ssle
+	} catch (Exception ex) {
+    	return ex.response
+    }
 }
 
 Map apiRequestHeaders() {
 	def userpassascii = "${username}:${password}"
-    if (state.miHomeAccessToken != null && state.miHomeAccessToken != '') {
+    if (state.miHomeAccessToken && state.miHomeAccessToken != '') {
     	userpassascii = "${username}:${state.miHomeAccessToken}"
     }
   	def userpass = "Basic " + userpassascii.encodeAsBase64().toString()
@@ -728,9 +736,9 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 }
 
 private def textVersion() {
-    def text = "MiHome (Connect)\nVersion: 2.0.1\nDate: 17012017(1930)"
+    def text = "MiHome (Connect)\nVersion: 2.0.1c\nDate: 31072018(0830)"
 }
 
 private def textCopyright() {
-    def text = "Copyright © 2017 Alex Lee Yuk Cheung"
+    def text = "Copyright © 2017,2018 Alex Lee Yuk Cheung"
 }
