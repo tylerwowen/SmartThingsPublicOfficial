@@ -14,6 +14,7 @@
  *
  *	VERSION HISTORY
  *
+ *	04.08.2018: 2.0.2 - Updated supported devices. Remove CRON schedule in place of runEveryXMinute command.
  *	31.07.2018: 2.0.1c - Bug fix. Stop SSL exception on API call.
  *	16.01.2017: 2.0.1b - Bug fix. Wrong implementation of double wall socket fixed.
  *	16.01.2017: 2.0.1 - Added support for MiHome Double Wall Socket
@@ -205,8 +206,8 @@ def installed() {
 	initialize()
 	// Check for new devices and remove old ones every 3 hours
 	runEvery3Hours('updateDevices')
-    // execute refresh method every minute
-    schedule("0 0/2 * * * ?", refreshDevices)
+    // execute refresh method every 5 minutes
+    runEvery1Minute('refreshDevices')
 }
 
 // called after settings are changed
@@ -214,7 +215,7 @@ def updated() {
 	log.debug "updated"
 	initialize()
     unschedule('refreshDevices')
-    schedule("35 0/2 * * * ?", refreshDevices)
+    runEvery1Minute('refreshDevices')
 }
 
 def uninstalled() {
@@ -281,6 +282,7 @@ def updateDevices() {
 
     def selectors = []
 	devices.each { device ->
+        log.debug "Dectected: device ${device.id}: ${device.device_type}"
         if (device.device_type == 'etrv') {
 			log.debug "Identified: device ${device.id}: ${device.device_type}: ${device.label}: ${device.target_temperature}: ${device.last_temperature}: ${device.voltage}"
             selectors.add("${device.id}")
@@ -386,7 +388,7 @@ def updateDevices() {
      			}
             })
         }
-        else if (device.device_type == 'monitor' || device.device_type == 'house') {
+        else if (device.device_type == 'monitor' || device.device_type == 'house' || device.device_type == 'home') {
         	log.debug "Identified: device ${device.id}: ${device.device_type}: ${device.label}"
             selectors.add("${device.id}")
             def value = "${device.label} Monitor"
@@ -403,7 +405,7 @@ def updateDevices() {
 				}
      		}
         }
-        else if (device.device_type == 'motion') {
+        else if (device.device_type == 'motion' || device.device_type == 'open' ) {
         	log.debug "Identified: device ${device.id}: ${device.device_type}: ${device.label}"
             selectors.add("${device.id}")
             def value = "${device.label} Motion Sensor"
@@ -736,7 +738,7 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 }
 
 private def textVersion() {
-    def text = "MiHome (Connect)\nVersion: 2.0.1c\nDate: 31072018(0830)"
+    def text = "MiHome (Connect)\nVersion: 2.0.2\nDate: 04082018(0830)"
 }
 
 private def textCopyright() {
