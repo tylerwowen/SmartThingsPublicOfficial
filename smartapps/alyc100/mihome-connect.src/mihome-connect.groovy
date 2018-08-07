@@ -14,6 +14,7 @@
  *
  *	VERSION HISTORY
  *
+ *	06.08.2018: 2.0.2b - Double light switch support.
  *	04.08.2018: 2.0.2 - Updated supported devices. Remove CRON schedule in place of runEveryXMinute command.
  *	31.07.2018: 2.0.1c - Bug fix. Stop SSL exception on API call.
  *	16.01.2017: 2.0.1b - Bug fix. Wrong implementation of double wall socket fixed.
@@ -145,7 +146,7 @@ def selectDevicePAGE() {
             input "selectedSockets", "enum", image: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/smartapps/alyc100/mihome2-socket.png", required:false, title:"Select MiHome Wall Socket Devices \n(${state.miSocketDevices.size() ?: 0} found)", multiple:true, options:state.miSocketDevices
             input "selectedMonitors", "enum", image: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/smartapps/alyc100/mihome5-adapter.png", required:false, title:"Select MiHome Monitor Devices \n(${state.miMonitorDevices.size() ?: 0} found)", multiple:true, options:state.miMonitorDevices
 			input "selectedMotions", "enum", image: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/smartapps/alyc100/mihome-motion-sensor-ir.png", required:false, title:"Select MiHome Motion Sensors \n(${state.miMotionSensors.size() ?: 0} found)", multiple:true, options:state.miMotionSensors
-    }
+     }
   }
 }
 
@@ -282,7 +283,6 @@ def updateDevices() {
 
     def selectors = []
 	devices.each { device ->
-        log.debug "Dectected: device ${device.id}: ${device.device_type}"
         if (device.device_type == 'etrv') {
 			log.debug "Identified: device ${device.id}: ${device.device_type}: ${device.label}: ${device.target_temperature}: ${device.last_temperature}: ${device.voltage}"
             selectors.add("${device.id}")
@@ -300,7 +300,7 @@ def updateDevices() {
 				}
      		}
     	}
-        else if (device.device_type == 'light') {
+        else if (device.device_type == 'light' || device.device_type == 'double_light') {
         	log.debug "Identified: device ${device.id}: ${device.device_type}: ${device.label}"
             selectors.add("${device.id}")
             def value = "${device.label} Light Switch"
@@ -421,6 +421,9 @@ def updateDevices() {
 					log.debug "Device's name has changed."
 				}
      		}
+        }
+        else {
+        	log.debug "Unsupported device: device ${device.id}: ${device.device_type}. Contact alyc100 with copy of this log."
         }
     }
    	log.debug selectors
@@ -738,7 +741,7 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 }
 
 private def textVersion() {
-    def text = "MiHome (Connect)\nVersion: 2.0.2\nDate: 04082018(0830)"
+    def text = "MiHome (Connect)\nVersion: 2.0.2b\nDate: 06082018(2015)"
 }
 
 private def textCopyright() {
