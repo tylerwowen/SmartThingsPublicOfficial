@@ -13,6 +13,8 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  21-09-2018: 1.9.2 - Support for D4 and D6 models. Replace Neato logo with empty icon for unsupport feature tiles.
+ *  18-04-2018: 1.9.1 - Enable methods to enable WebCORE to set botvac mode.
  *  18-04-2018: 1.9b - Incorrect Persistent Map mode label fix.
  *  18-04-2018: 1.9 - Support for D7 persistent map cleaning and deep cleaning mode.
  *	15-04-2018: 1.8.1 - Fix support for D7 with houseCleaning basic-3 support.
@@ -71,6 +73,9 @@ metadata {
         command "toggleCleaningMode"
         command "toggleNavigationMode"
         command "togglePersistentMapMode"
+        command "setCleaningMode", ["string"]
+        command "setNavigationMode", ["string"]
+        command "setPersistentMapMode", ["string"]
         command "findMe"
 
 		attribute "network","string"
@@ -153,7 +158,7 @@ metadata {
 			state("turbo", label:'Turbo Mode', action:"toggleCleaningMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_turbo_icon.png")
             state("eco", label:'Eco Mode', action:"toggleCleaningMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_eco_icon.png")
             state("findMe", label:'Find Me', action:"findMe", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_findme_icon.png")
-            state("empty", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_logo.png")
+            state("empty", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/empty.png")
 		}
         
         standardTile("navigationMode", "device.navigationMode", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
@@ -161,13 +166,13 @@ metadata {
             state("extraCare", label:'Extra Care', action:"toggleNavigationMode", icon:"st.Outdoor.outdoor1")
             state("deep", label:'Deep', action:"toggleNavigationMode", icon:"st.Bath.bath13")
             state("findMe", label:'Find Me', action:"findMe", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_findme_icon.png")
-            state("empty", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_logo.png")
+            state("empty", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/empty.png")
 		}
         
         standardTile("persistentMapMode", "device.persistentMapMode", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
 			state("off", label:'Pers Map Off', action:"togglePersistentMapMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_floor_icon.png")
             state("on", label:'Pers Map On', action:"togglePersistentMapMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_floor_icon.png")
-            state("empty", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_logo.png")
+            state("empty", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/empty.png")
 		}
         
         standardTile("switch", "device.switch", width: 2, height: 2, decoration: "flat") {
@@ -325,6 +330,34 @@ def togglePersistentMapMode() {
     }
     sendEvent(name: 'persistentMapMode', value: state.startPersistentMapMode, displayed: true)
     runIn(2, refresh)
+}
+
+//Methods to support WebCORE mode set
+def setCleaningMode(mode) {
+	if ( mode == "eco" || mode == "turbo" ) {
+    	state.startCleaningMode = mode
+    	sendEvent(name: 'cleaningMode', value: state.startCleaningMode, displayed: true)
+    } else {
+    	log.error("Unsupported cleaning mode: [${mode}]")
+    }
+}
+
+def setNavigationMode(mode) {
+	if ( mode == "deep" || mode == "extraCare" || mode == "standard") {
+    	state.startNavigationMode = mode
+		sendEvent(name: 'navigationMode', value: state.startNavigationMode, displayed: true)
+	} else {
+    	log.error("Unsupported navigation mode: [${mode}]")
+    }
+}
+
+def setPersistentMapMode(mode) {
+	if ( mode == "on" || mode == "off" ) {
+    	state.startPersistentMapMode = mode
+		sendEvent(name: 'persistentMapMode', value: state.startPersistentMapMode, displayed: true)
+	} else {
+    	log.error("Unsupported persistent map mode: [${mode}]")
+    }
 }
 
 def poll() {
@@ -500,8 +533,8 @@ def poll() {
         }
         
         //Tile configuration for models
-        if (state.modelName == "BotVacD7Connected") {
-        	//Neato Botvac D7
+        if (state.modelName == "BotVacD7Connected" || state.modelName == "BotVacD6Connected" || state.modelName == "BotVacD4Connected" ) {
+        	//Neato Botvac D7, D6 and D4
         } else if (state.modelName == "BotVacD5Connected") {
         	//Neato Botvac D5
         	sendEvent(name: 'cleaningMode', value: "findMe", displayed: false)
@@ -593,7 +626,7 @@ def refresh() {
 	poll()
 }
 
-def isTurboCleanMode() {
+private def isTurboCleanMode() {
 	def result = true
     if (state.startCleaningMode != null && state.startCleaningMode == "eco") {
     	result = false
@@ -601,7 +634,7 @@ def isTurboCleanMode() {
     result
 }
 
-def isExtraCareNavigationMode() {
+private def isExtraCareNavigationMode() {
 	def result = false
     if (state.startNavigationMode != null && state.startNavigationMode == "extraCare") {
     	result = true
@@ -609,7 +642,7 @@ def isExtraCareNavigationMode() {
     result
 }
 
-def isDeepNavigationMode() {
+private def isDeepNavigationMode() {
 	def result = false
     if (state.startNavigationMode != null && state.startNavigationMode == "deep") {
     	result = true
@@ -617,7 +650,7 @@ def isDeepNavigationMode() {
     result
 }
 
-def isPersistentMapMode() {
+private def isPersistentMapMode() {
 	def result = false
     if (state.startPersistentMapMode != null && state.startPersistentMapMode == "on") {
     	result = true
@@ -851,7 +884,7 @@ def getMapHTML() {
 }
 
 //Helper methods
-def getCleaningTime(start_at, end_at) {
+private def getCleaningTime(start_at, end_at) {
 	def diff = end_at.getTime() - start_at.getTime()
 	def hour = (diff / 3600000) as Integer
     def minute = Math.round((diff - (hour * 3600000)) / 60000) as Integer
@@ -862,7 +895,7 @@ def getCleaningTime(start_at, end_at) {
 	return "${hourString}:${minuteString}"
 }
 
-def convertSecondsToTime(seconds) {
+private def convertSecondsToTime(seconds) {
 	def hour = (seconds / 3600) as Integer
     def minute = (seconds - (hour * 3600)) / 60 as Integer
     
@@ -872,7 +905,7 @@ def convertSecondsToTime(seconds) {
 	return "${hourString}:${minuteString}"
 }
 
-def getCssData() {
+private def getCssData() {
 	def cssData = null
 	def htmlInfo
 	state.cssData = null
@@ -897,7 +930,7 @@ def getCssData() {
 	return cssData
 }
 
-def getFileBase64(url, preType, fileType) {
+private def getFileBase64(url, preType, fileType) {
 	try {
 		def params = [
 			uri: url,
