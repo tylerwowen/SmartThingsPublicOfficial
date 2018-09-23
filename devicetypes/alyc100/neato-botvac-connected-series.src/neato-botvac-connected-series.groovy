@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  23-09-2018: 1.9.2b - Reduce the CAPS on Android tile labels.
  *  21-09-2018: 1.9.2 - Support for D4 and D6 models. Replace Neato logo with empty icon for unsupport feature tiles.
  *  18-04-2018: 1.9.1 - Enable methods to enable WebCORE to set botvac mode.
  *  18-04-2018: 1.9b - Incorrect Persistent Map mode label fix.
@@ -92,7 +93,7 @@ metadata {
 			tileAttribute("device.switch", key:"PRIMARY_CONTROL", canChangeBackground: true){
 				attributeState("off", label: 'STOPPED', action: "switch.on", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png", backgroundColor: "#ffffff", nextState:"on")
 				attributeState("on", label: 'CLEANING', action: "switch.off", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/best-pet-hair-cleaning.png", backgroundColor: "#79b821", nextState:"off")
-				attributeState("offline", label:'${name}', icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png", backgroundColor:"#bc2323")
+				attributeState("offline", label:'OFFLINE', icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png", backgroundColor:"#bc2323")
             }
             tileAttribute ("statusMsg", key: "SECONDARY_CONTROL") {
 				attributeState "statusMsg", label:'${currentValue}'
@@ -126,17 +127,17 @@ metadata {
 			state("default", label:'refresh', action:"refresh.refresh", icon:"st.secondary.refresh-icon")
 		}
         standardTile("status", "device.status", width: 2, height: 2, inactiveLabel: false, canChangeIcon: false) {
-			state ("unknown", label:'${currentValue}', icon: "st.unknown.unknown.unknown")
-			state ("cleaning", label:'${currentValue}', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/best-pet-hair-cleaning.png")
-			state ("ready", label:'${currentValue}', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png")
-			state ("error", label:'${currentValue}', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png", backgroundColor: "#bc2323")
-			state ("paused", label:'${currentValue}', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png")
+			state ("unknown", label:'Unknown', icon: "st.unknown.unknown.unknown")
+			state ("cleaning", label:'Cleaning', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/best-pet-hair-cleaning.png")
+			state ("ready", label:'Ready', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png")
+			state ("error", label:'Error', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png", backgroundColor: "#bc2323")
+			state ("paused", label:'Paused', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png")
 		}
         
         standardTile("dockStatus", "device.dockStatus", width: 2, height: 2, inactiveLabel: false, canChangeIcon: false, decoration: "flat") {
-         	state ("docked", label:'DOCKED', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/auto-charge-resume.png")
-			state ("dockable", label:'DOCK', action: "dock", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_staub.png")
-            state ("undocked", label:'UNDOCKED', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png")
+         	state ("docked", label:'Docked', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/auto-charge-resume.png")
+			state ("dockable", label:'Dock', action: "dock", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_staub.png")
+            state ("undocked", label:'Undocked', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png")
 		}
         
         standardTile("scheduled", "device.scheduled", width: 2, height: 2, decoration: "flat") {
@@ -145,8 +146,8 @@ metadata {
 		}
         
         standardTile("dockHasBeenSeen", "device.dockHasBeenSeen", width: 2, height: 2, inactiveLabel: false, canChangeIcon: false) {
-         	state ("true", label:'SEEN', backgroundColor: "#79b821", icon:"st.Transportation.transportation13")
-			state ("false", label:'SEARCHING', backgroundColor: "#E5E500", icon:"st.Transportation.transportation13")
+         	state ("true", label:'Seen', backgroundColor: "#79b821", icon:"st.Transportation.transportation13")
+			state ("false", label:'Searching', backgroundColor: "#E5E500", icon:"st.Transportation.transportation13")
             state ("idle", label:'', icon:"st.Transportation.transportation13")
 		}
         

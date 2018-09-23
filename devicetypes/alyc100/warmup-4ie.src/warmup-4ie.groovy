@@ -14,6 +14,7 @@
  *
  *
  *	VERSION HISTORY
+ *	10.12.2017 	v1.0 BETA Release 4 - Fix to boost functionality when thermostat is off.
  *	10.12.2017 	v1.0 BETA Release 3 - Add boost functionality.
  *	05.01.2017	v1.0 BETA Release 2 - Minor fix that prevented 'Manual' mode being selected and activated.
  *  14.12.2016	v1.0 BETA - Initial Release
@@ -353,6 +354,9 @@ def refreshBoostLabel() {
     def latestThermostatMode = device.latestState('thermostatMode')  
     if (latestThermostatMode.stringValue == 'emergency heat' ) {
     	boostLabel = "Restart\n$state.boostLength Min Boost"
+    }
+    if (latestThermostatMode.stringValue == 'off' ) {
+    	boostLabel = "Boost not\navailable"
     }
     sendEvent("name":"boostLabel", "value": boostLabel, displayed: false)
 }
