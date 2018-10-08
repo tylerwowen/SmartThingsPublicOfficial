@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  08-10-2018: 1.10 - Initial compatibility with New Smartthings App.
  *  23-09-2018: 1.9.2b - Reduce the CAPS on Android tile labels.
  *  21-09-2018: 1.9.2 - Support for D4 and D6 models. Replace Neato logo with empty icon for unsupport feature tiles.
  *  18-04-2018: 1.9.1 - Enable methods to enable WebCORE to set botvac mode.
@@ -59,12 +60,13 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.InvalidKeyException;
 
 metadata {
-	definition (name: "Neato Botvac Connected Series", namespace: "alyc100", author: "Alex Lee Yuk Cheung") {
+	definition (name: "Neato Botvac Connected Series", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.switch", mnmn: "SmartThings", vid: "generic-switch") {
     	capability "Battery"
 		capability "Polling"
 		capability "Refresh"
 		capability "Switch"
         capability "Actuator"
+        capability "Health Check"
         
 		command "refresh"
         command "dock"
@@ -198,11 +200,13 @@ mappings {
 def installed() {
 	log.debug "Installed with settings: ${settings}"
 	initialize()
+    sendEvent(name: "checkInterval", value: 10 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
 }
 
 def updated() {
 	log.debug "Updated with settings: ${settings}"
 	initialize()
+    sendEvent(name: "checkInterval", value: 10 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
 }
 
 def initialize() {
