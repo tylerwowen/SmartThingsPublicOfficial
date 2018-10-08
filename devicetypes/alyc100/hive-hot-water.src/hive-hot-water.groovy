@@ -26,15 +26,19 @@
  *
  *	  30.10.2017
  *	  v3.0 - Version refactor to reflect BeeKeeper API update.
+ *
+ *	  08.10.2018
+ *	  v3.1 - First attempt at New Smartthings App compatibility.
  */
 
 metadata {
-	definition (name: "Hive Hot Water", namespace: "alyc100", author: "Alex Lee Yuk Cheung") {
+	definition (name: "Hive Hot Water", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.thermostat", mnmn: "SmartThings", vid: "SmartThings-smartthings-Z-Wave_Thermostat") {
 		capability "Actuator"
 		capability "Polling"
 		capability "Refresh"
         capability "Thermostat"
 		capability "Thermostat Mode"
+        capability "Health Check"
         
         command "setThermostatMode"
         command "setBoostLength"
@@ -115,6 +119,12 @@ def parse(String description) {
 def installed() {
 	log.debug "Executing 'installed'"
     state.boostLength = 60
+    sendEvent(name: "checkInterval", value: 10 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
+}
+
+void updated() {
+	log.debug "Executing 'updated'"
+    sendEvent(name: "checkInterval", value: 10 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
 }
 
 // handle commands
@@ -273,12 +283,14 @@ def poll() {
         if (stateHotWaterRelay == "ON") {
         	sendEvent(name: 'temperature', value: 99, unit: "C", state: "heat", displayed: false)
         	sendEvent(name: 'heatingSetpoint', value: 99, unit: "C", state: "heat", displayed: false)
+        	sendEvent(name: 'coolingSetpoint', value: 99, unit: "C", state: "heat", displayed: false)
             sendEvent(name: 'thermostatOperatingState', value: "heating")
             statusMsg = statusMsg + " and is HEATING"
         }       
         else {
         	sendEvent(name: 'temperature', value: 0, unit: "C", state: "heat", displayed: false)
        	 	sendEvent(name: 'heatingSetpoint', value: 0, unit: "C", state: "heat", displayed: false)
+        	sendEvent(name: 'coolingSetpoint', value: 0, unit: "C", state: "heat", displayed: false)
             sendEvent(name: 'thermostatOperatingState', value: "idle")
             statusMsg = statusMsg + " and is IDLE"
         }

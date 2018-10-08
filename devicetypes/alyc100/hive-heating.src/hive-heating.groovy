@@ -40,6 +40,9 @@
  *
  *	30.10.2017
  *	v3.0 - Version refactor to reflect BeeKeeper API update.
+ *
+ *	08.10.2017
+ *	v3.1 - New Smartthing App compatability
  */
 preferences 
 {
@@ -50,7 +53,7 @@ preferences
 }
 
 metadata {
-	definition (name: "Hive Heating", namespace: "alyc100", author: "Alex Lee Yuk Cheung") {
+	definition (name: "Hive Heating", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.thermostat", mnmn: "SmartThings", vid: "SmartThings-smartthings-Z-Wave_Thermostat") {
 		capability "Actuator"
 		capability "Polling"
 		capability "Refresh"
@@ -59,6 +62,7 @@ metadata {
 		capability "Thermostat Heating Setpoint"
 		capability "Thermostat Mode"
 		capability "Thermostat Operating State"
+        capability "Health Check"
         
         command "heatingSetpointUp"
 		command "heatingSetpointDown"
@@ -218,6 +222,12 @@ def installed() {
 	log.debug "Executing 'installed'"
     state.boostLength = 60
     state.desiredHeatSetpoint = 7
+    sendEvent(name: "checkInterval", value: 10 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
+}
+
+void updated() {
+	log.debug "Executing 'updated'"
+    sendEvent(name: "checkInterval", value: 10 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
 }
 
 // handle commands
@@ -456,6 +466,7 @@ def poll() {
         }
         sendEvent(name: 'temperature', value: temperature, unit: "C", state: "heat")
         sendEvent(name: 'heatingSetpoint', value: heatingSetpoint, unit: "C", state: "heat")
+        sendEvent(name: 'coolingSetpoint', value: heatingSetpoint, unit: "C", state: "heat")
         sendEvent(name: 'thermostatSetpoint', value: heatingSetpoint, unit: "C", state: "heat", displayed: false)
         sendEvent(name: 'thermostatFanMode', value: "off", displayed: false)
         
