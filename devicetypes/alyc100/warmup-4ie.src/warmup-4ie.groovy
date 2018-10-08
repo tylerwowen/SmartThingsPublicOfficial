@@ -1,7 +1,7 @@
 /**
  *  Warmup 4ie
  *
- *  Copyright 2015 Alex Lee Yuk Cheung
+ *  Copyright 2015,2016,2017,2018 Alex Lee Yuk Cheung
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -14,6 +14,7 @@
  *
  *
  *	VERSION HISTORY
+ *	08.10.2018 	v1.0 BETA Release 5 - Compatibility for New Smartthings App.
  *	10.12.2017 	v1.0 BETA Release 4 - Fix to boost functionality when thermostat is off.
  *	10.12.2017 	v1.0 BETA Release 3 - Add boost functionality.
  *	05.01.2017	v1.0 BETA Release 2 - Minor fix that prevented 'Manual' mode being selected and activated.
@@ -29,7 +30,7 @@ preferences
 }
 
 metadata {
-	definition (name: "Warmup 4IE", namespace: "alyc100", author: "Alex Lee Yuk Cheung") {
+	definition (name: "Warmup 4IE", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.thermostat", mnmn: "SmartThings", vid: "SmartThings-smartthings-Z-Wave_Thermostat") {
 		capability "Actuator"
 		capability "Polling"
 		capability "Refresh"
@@ -38,6 +39,7 @@ metadata {
         capability "Thermostat Mode"
 		capability "Thermostat Heating Setpoint"
 		capability "Switch"
+        capability "Health Check"
         
         command "heatingSetpointUp"
 		command "heatingSetpointDown"
@@ -191,6 +193,7 @@ def installed() {
     state.desiredHeatSetpoint = 7
 	// execute handlerMethod every 10 minutes.
     runEvery10Minutes(poll)
+    sendEvent(name: "checkInterval", value: 20 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
 }
 
 def updated() {
@@ -198,6 +201,7 @@ def updated() {
 	// execute handlerMethod every 10 minutes.
     unschedule()
     runEvery10Minutes(poll)
+    sendEvent(name: "checkInterval", value: 20 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
 }
 
 def uninstalled() {
@@ -471,6 +475,7 @@ def poll() {
     
     def heatingSetpoint = String.format("%2.1f",(room.targetTemp[0] as BigDecimal) / 10)
     sendEvent(name: 'heatingSetpoint', value: heatingSetpoint, unit: "C", state: "heat")
+    sendEvent(name: 'coolingSetpoint', value: heatingSetpoint, unit: "C", state: "heat")
     sendEvent(name: 'thermostatSetpoint', value: heatingSetpoint, unit: "C", state: "heat", displayed: false)
     
     sendEvent(name: 'thermostatFanMode', value: "off", displayed: false)
