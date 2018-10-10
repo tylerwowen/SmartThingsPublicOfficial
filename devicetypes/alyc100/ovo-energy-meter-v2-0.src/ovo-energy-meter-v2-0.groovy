@@ -44,6 +44,8 @@
  *	01.06.2018: v2.5 	- Remove all live feed tiles as they are now unsupported on OVO.
  *						- Add yesterday's total power consumption into main tile.
  *						- Update chart data with historical values only.
+ *
+ *	10.10.2018: v2.6 - Compatibility with New Smartthings App
  */
  
 preferences 
@@ -52,11 +54,12 @@ preferences
 }
 
 metadata {
-	definition (name: "OVO Energy Meter V2.0", namespace: "alyc100", author: "Alex Lee Yuk Cheung") {
+	definition (name: "OVO Energy Meter V2.0", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.switch", mnmn: "SmartThings", vid: "generic-switch-power") {
 		capability "Polling"
 		capability "Power Meter"
 		capability "Refresh"
         capability "Sensor"
+        capability "Health Check"
         
         attribute "network","string"
 	}
@@ -119,6 +122,14 @@ def parse(String description) {
 }
 
 // handle commands
+def installed() {
+    sendEvent(name: "checkInterval", value: 48 * 60 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
+}
+
+def updated() {
+    sendEvent(name: "checkInterval", value: 48 * 60 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
+}
+
 def poll() {
 	log.debug "Executing 'poll'"
 	refreshLiveData()

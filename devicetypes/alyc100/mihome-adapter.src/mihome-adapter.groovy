@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *	VERSION HISTORY - FORMER VERSION NOW RENAMED AS ADAPTER PLUS
+ *	10.10.2018: 2.1 - Compatibility with New Smartthings App.
  *	17.09.2017: 2.0a - Disable setting device to Offline on unexpected API response.
  *	23.11.2016:	2.0 - Remove extra logging.
  *
@@ -23,11 +24,12 @@
  *	08.11.2016:	2.0 BETA Release 1 - Support for MiHome (Connect) v2.0. Inital version of device.
  */
 metadata {
-	definition (name: "MiHome Adapter", namespace: "alyc100", author: "Alex Lee Yuk Cheung") {
+	definition (name: "MiHome Adapter", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.switch", mnmn: "SmartThings", vid: "generic-switch") {
 		capability "Actuator"
 		capability "Polling"
 		capability "Refresh"
 		capability "Switch"
+        capability "Health Check"
         
         command "on"
         command "off"
@@ -77,6 +79,14 @@ def parse(String description) {
 }
 
 // handle commands
+def installed() {
+    sendEvent(name: "checkInterval", value: 10 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
+}
+
+def updated() {
+    sendEvent(name: "checkInterval", value: 10 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
+}
+
 def poll() {
 	log.debug "Executing 'poll' for ${device} ${this} ${device.deviceNetworkId}"
     def body = []

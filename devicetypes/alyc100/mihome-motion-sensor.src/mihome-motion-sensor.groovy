@@ -13,17 +13,19 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *	VERSION HISTORY
+ *	10.10.2018: 2.1 - Compatibility with New Smartthings App.
  *  23.11.2016:	2.0 - Remove BETA status.
  *
  *	08.11.2016:	2.0 BETA Release 1 - Support for MiHome (Connect) v2.0. Initial version of device.
  *
  */
 metadata {
-	definition (name: "MiHome Motion Sensor", namespace: "alyc100", author: "Alex Lee Yuk Cheung") {
+	definition (name: "MiHome Motion Sensor", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.switch", mnmn: "SmartThings", vid: "generic-motion") {
 		capability "Motion Sensor"
 		capability "Polling"
 		capability "Refresh"
 		capability "Sensor"
+        capability "Health Check"
 	}
 
 	tiles(scale: 2) {
@@ -51,6 +53,14 @@ def parse(String description) {
 }
 
 // handle commands
+def installed() {
+    sendEvent(name: "checkInterval", value: 10 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
+}
+
+def updated() {
+    sendEvent(name: "checkInterval", value: 10 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
+}
+
 def poll() {
 	log.debug "Executing 'poll' for ${device} ${this} ${device.deviceNetworkId}"
     

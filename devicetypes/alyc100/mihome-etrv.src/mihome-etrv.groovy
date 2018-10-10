@@ -14,6 +14,7 @@
  *
  *
  *	VERSION HISTORY
+ *  10.10.2018:	2.1 - Add support for New Smartthings App.
  *  23.11.2016:	2.0 - Remove BETA status.
  * 
  *	07.11.2016: 2.0 BETA Release 1.1 - Allow icon to be changed.
@@ -30,7 +31,7 @@
  */
  
 metadata {
-	definition (name: "MiHome eTRV", namespace: "alyc100", author: "Alex Lee Yuk Cheung") {
+	definition (name: "MiHome eTRV", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.thermostat", mnmn: "SmartThings", vid: "SmartThings-smartthings-Z-Wave_Thermostat") {
 		capability "Actuator"
 		capability "Polling"
 		capability "Refresh"
@@ -39,6 +40,7 @@ metadata {
         capability "Thermostat Mode"
 		capability "Thermostat Heating Setpoint"
 		capability "Switch"
+        capability "Health Check"
         
         command "heatingSetpointUp"
 		command "heatingSetpointDown"
@@ -132,6 +134,12 @@ metadata {
 def installed() {
 	log.debug "Executing 'installed'"
     state.boostLength = 60
+    sendEvent(name: "checkInterval", value: 10 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
+}
+
+void updated() {
+	log.debug "Executing 'updated'"
+    sendEvent(name: "checkInterval", value: 10 * 60 + 2 * 60, data: [protocol: "cloud"], displayed: false)
 }
 
 def uninstalled() {
