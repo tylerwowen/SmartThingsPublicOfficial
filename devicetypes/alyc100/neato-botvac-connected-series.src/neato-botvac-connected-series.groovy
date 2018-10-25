@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ * 	10-10-2018: 1.11 - Spot Clean functionality
  *  08-10-2018: 1.10 - Initial compatibility with New Smartthings App.
  *  23-09-2018: 1.9.2b - Reduce the CAPS on Android tile labels.
  *  21-09-2018: 1.9.2 - Support for D4 and D6 models. Replace Neato logo with empty icon for unsupport feature tiles.
@@ -83,6 +84,7 @@ metadata {
 
 		attribute "network","string"
 		attribute "bin","string"
+        attribute "status","string"
 	}
 
 
