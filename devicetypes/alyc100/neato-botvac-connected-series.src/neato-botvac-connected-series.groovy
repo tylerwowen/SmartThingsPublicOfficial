@@ -13,7 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
- * 	10-10-2018: 1.11 - Spot Clean functionality
+ * 	01-11-2018: 1.10b - Bug fix. Stop double update of dock status on poll.
  *  08-10-2018: 1.10 - Initial compatibility with New Smartthings App.
  *  23-09-2018: 1.9.2b - Reduce the CAPS on Android tile labels.
  *  21-09-2018: 1.9.2 - Support for D4 and D6 models. Replace Neato logo with empty icon for unsupport feature tiles.
@@ -572,7 +572,7 @@ def poll() {
             }
         	sendEvent(name: 'battery', value: result.details.charge as Integer)
         }
-        if (result.containsKey("availableCommands")) {
+        if (result.containsKey("availableCommands") && (device.currentState("switch").getValue() == "off")) {
         	if (result.availableCommands.goToBase) {
         		sendEvent(name: 'dockStatus', value: "dockable")
             }
