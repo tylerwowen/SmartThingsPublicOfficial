@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	11-11-2018: 1.11 - Add support for turbo clean for D5.
  * 	01-11-2018: 1.10b - Bug fix. Stop double update of dock status on poll.
  *  08-10-2018: 1.10 - Initial compatibility with New Smartthings App.
  *  23-09-2018: 1.9.2b - Reduce the CAPS on Android tile labels.
@@ -540,8 +541,10 @@ def poll() {
         }
         
         //Tile configuration for models
-        if (state.modelName == "BotVacD7Connected" || state.modelName == "BotVacD6Connected" || state.modelName == "BotVacD4Connected" ) {
-        	//Neato Botvac D7, D6 and D4
+        if (state.modelName == "BotVacD7Connected" || state.modelName == "BotVacD6Connected" || (state.modelName == "BotVacD5Connected" && state.firmware.startsWith("4.3")) || state.modelName == "BotVacD4Connected" ) {
+        	//Neato Botvac D7, D6, D5 (firmware 4.3 and above) and D4
+            sendEvent(name: 'persistentMapMode', value: state.startPersistentMapMode, displayed: true)
+            sendEvent(name: 'cleaningMode', value: state.startCleaningMode, displayed: true)
         } else if (state.modelName == "BotVacD5Connected") {
         	//Neato Botvac D5
         	sendEvent(name: 'cleaningMode', value: "findMe", displayed: false)
