@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	20-12-2018: 1.12 - UI improvements. Support for persistent map for D3 firmware v4.3+.
  *	11-11-2018: 1.11 - Add support for turbo clean for D5.
  * 	01-11-2018: 1.10b - Bug fix. Stop double update of dock status on poll.
  *  08-10-2018: 1.10 - Initial compatibility with New Smartthings App.
@@ -95,10 +96,13 @@ metadata {
 
 	tiles(scale: 2) {
     	multiAttributeTile(name: "clean", width: 6, height: 4, type:"lighting") {
-			tileAttribute("device.switch", key:"PRIMARY_CONTROL", canChangeBackground: true){
-				attributeState("off", label: 'STOPPED', action: "switch.on", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png", backgroundColor: "#ffffff", nextState:"on")
-				attributeState("on", label: 'CLEANING', action: "switch.off", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/best-pet-hair-cleaning.png", backgroundColor: "#79b821", nextState:"off")
-				attributeState("offline", label:'OFFLINE', icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png", backgroundColor:"#bc2323")
+			tileAttribute("device.status", key:"PRIMARY_CONTROL", canChangeBackground: true){
+				attributeState("off", label: 'PAUSED', action: "switch.on", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png", backgroundColor: "#ffffff", nextState:"on")
+				attributeState("docked", label: 'DOCKED', action: "switch.on", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/auto-charge-resume.png", backgroundColor: "#ffffff", nextState:"on")
+                attributeState("docking", label: 'DOCKING', action: "switch.on", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png", backgroundColor: "#ffffff", nextState:"on")
+				attributeState("cleaning", label: 'CLEANING', action: "switch.off", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/best-pet-hair-cleaning.png", backgroundColor: "#79b821", nextState:"off")
+                attributeState("error", label:'ERROR', icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png", backgroundColor: "#FF0000")
+				attributeState("offline", label:'${name}', icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png", backgroundColor:"#bc2323")
             }
             tileAttribute ("statusMsg", key: "SECONDARY_CONTROL") {
 				attributeState "statusMsg", label:'${currentValue}'
@@ -541,8 +545,8 @@ def poll() {
         }
         
         //Tile configuration for models
-        if (state.modelName == "BotVacD7Connected" || state.modelName == "BotVacD6Connected" || (state.modelName == "BotVacD5Connected" && state.firmware.startsWith("4.3")) || state.modelName == "BotVacD4Connected" ) {
-        	//Neato Botvac D7, D6, D5 (firmware 4.3 and above) and D4
+        if (state.modelName == "BotVacD7Connected" || state.modelName == "BotVacD6Connected" || (state.modelName == "BotVacD5Connected" && state.firmware.startsWith("4.3")) || state.modelName == "BotVacD4Connected" || (state.modelName == "BotVacD3Connected" && state.firmware.startsWith("4.3")) ) {
+        	//Neato Botvac D7, D6, D5 (firmware 4.3 and above), D4, D3 (firmware 4.3 and above)
             sendEvent(name: 'persistentMapMode', value: state.startPersistentMapMode, displayed: true)
             sendEvent(name: 'cleaningMode', value: state.startCleaningMode, displayed: true)
         } else if (state.modelName == "BotVacD5Connected") {
