@@ -676,7 +676,6 @@ private def isPersistentMapMode() {
 private def isD3D5SupportedFirmwareVersion(firmware) {
 	def result = false
     def value = firmware.substring(0,3) as BigDecimal
-    log.debug value
     if (value >= 4.3) {
     	result = true
     }
