@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  23-12-2018: 1.12b - Fix to better support future D3/D5 firmware updates.
  *	20-12-2018: 1.12 - UI improvements. Support for persistent map for D3 firmware v4.3+.
  *	11-11-2018: 1.11 - Add support for turbo clean for D5.
  * 	01-11-2018: 1.10b - Bug fix. Stop double update of dock status on poll.
@@ -545,7 +546,7 @@ def poll() {
         }
         
         //Tile configuration for models
-        if (state.modelName == "BotVacD7Connected" || state.modelName == "BotVacD6Connected" || (state.modelName == "BotVacD5Connected" && state.firmware.startsWith("4.3")) || state.modelName == "BotVacD4Connected" || (state.modelName == "BotVacD3Connected" && state.firmware.startsWith("4.3")) ) {
+        if (state.modelName == "BotVacD7Connected" || state.modelName == "BotVacD6Connected" || (state.modelName == "BotVacD5Connected" && isD3D5SupportedFirmwareVersion(state.firmware)) || state.modelName == "BotVacD4Connected" || (state.modelName == "BotVacD3Connected" && isD3D5SupportedFirmwareVersion(state.firmware)) ) {
         	//Neato Botvac D7, D6, D5 (firmware 4.3 and above), D4, D3 (firmware 4.3 and above)
             sendEvent(name: 'persistentMapMode', value: state.startPersistentMapMode, displayed: true)
             sendEvent(name: 'cleaningMode', value: state.startCleaningMode, displayed: true)
@@ -667,6 +668,16 @@ private def isDeepNavigationMode() {
 private def isPersistentMapMode() {
 	def result = false
     if (state.startPersistentMapMode != null && state.startPersistentMapMode == "on") {
+    	result = true
+    }
+    result
+}
+
+private def isD3D5SupportedFirmwareVersion(firmware) {
+	def result = false
+    def value = firmware.substring(0,3) as BigDecimal
+    log.debug value
+    if (value >= 4.3) {
     	result = true
     }
     result
