@@ -645,6 +645,10 @@ def poll() {
 
 def refresh() {
 	log.debug "Executing 'refresh'"
+    if (state.secretKey == null) {
+    	//Issue notification
+    	parent.messageHandler("IMPORTANT: Update to Neato(Connect) and device handler required for new Neato firmware:\n1. Remove all Neato device smart app dependencies.\n2.Remove Neato devices.\n3. Update SmartApp to Neato (Connect) v1.2.5 or later and Device Handler to Neato Connected Series v1.13 or later from Github.\n4. Re-add your Neato Botvacs.\n5. Reconfigure your SmartSchedules as they will probably be deleted." ,true)
+    }
 	poll()
 }
 
@@ -708,22 +712,24 @@ def getHMACSignature(date, body) {
 	def robot_serial = device.deviceNetworkId
     //Format date should be "Fri, 03 Apr 2015 09:12:31 GMT"
 	
-	def robot_secret_key = state.secretKey
+    if (state.secretKey) {
+		def robot_secret_key = state.secretKey
 
-	// build string to be signed
-	def string_to_sign = "${robot_serial.toLowerCase()}\n${date}\n${body}"
+		// build string to be signed
+		def string_to_sign = "${robot_serial.toLowerCase()}\n${date}\n${body}"
 
-	// create signature with SHA256
-	//signature = OpenSSL::HMAC.hexdigest('sha256', robot_secret_key, string_to_sign)
-    try {
-    	Mac mac = Mac.getInstance("HmacSHA256")
-    	SecretKeySpec secretKeySpec = new SecretKeySpec(robot_secret_key.getBytes(), "HmacSHA256")
-    	mac.init(secretKeySpec)
-    	byte[] digest = mac.doFinal(string_to_sign.getBytes())
-    	return digest.encodeHex()
-   	} catch (InvalidKeyException e) {
-    	throw new RuntimeException("Invalid key exception while converting to HMac SHA256")
-  	}
+		// create signature with SHA256
+		//signature = OpenSSL::HMAC.hexdigest('sha256', robot_secret_key, string_to_sign)
+    	try {
+    		Mac mac = Mac.getInstance("HmacSHA256")
+    		SecretKeySpec secretKeySpec = new SecretKeySpec(robot_secret_key.getBytes(), "HmacSHA256")
+    		mac.init(secretKeySpec)
+    		byte[] digest = mac.doFinal(string_to_sign.getBytes())
+    		return digest.encodeHex()
+   		} catch (InvalidKeyException e) {
+    		throw new RuntimeException("Invalid key exception while converting to HMac SHA256")
+  		}
+    }
 }
 
 Map nucleoRequestHeaders(date, HMACsignature) {
