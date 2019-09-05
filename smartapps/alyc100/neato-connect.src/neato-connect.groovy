@@ -634,13 +634,13 @@ def updateDevices() {
 	}
 	def devices = devicesList()
     state.botvacDevices = [:]
+    state.secretKeys = [:]
     def selectors = []
 	devices.each { device -> 
     	if (device.serial != null) {
-        	selectors.add("${device.serial}|${device.secret_key}")
-            def value = "Neato Botvac - " + device.name
-			def key = device.serial + "|" + device.secret_key
-			state.botvacDevices["${key}"] = value
+        	selectors.add("${device.serial}")
+            state.secretKeys["${device.serial}"] = device.secret_key
+			state.botvacDevices["${device.serial}"] = "Neato Botvac - " + device.name
       	}
 	}    
     log.debug "selectors: $selectors"
@@ -666,22 +666,22 @@ def addBotvacs() {
 
 	selectedBotvacs.each { device ->
     	
-        def childDevice = getChildDevice(device.tokenize("|")[0])
+        def childDevice = getChildDevice(device)
         
         if (!childDevice) { 
-    		log.info("Adding Neato Botvac device ${device.tokenize("|")[0]}: ${state.botvacDevices[device]}")
+    		log.info("Adding Neato Botvac device ${device}: ${state.botvacDevices[device]}")
             
         	def data = [
                 name: state.botvacDevices[device],
 				label: state.botvacDevices[device]
 			]
-            childDevice = addChildDevice(app.namespace, "Neato Botvac Connected Series", device.tokenize("|")[0], null, data)
-            childDevice.setSecretKey(device.tokenize("|")[1])
+            childDevice = addChildDevice(app.namespace, "Neato Botvac Connected Series", device, null, data)
+            childDevice.setSecretKey(state.secretKeys[device])
             childDevice.refresh()
            
-			log.debug "Created ${state.botvacDevices[device]} with id: ${device.tokenize("|")[0]}"
+			log.debug "Created ${state.botvacDevices[device]} with id: ${device}"
 		} else {
-			log.debug "found ${state.botvacDevices[device]} with id ${device.tokenize("|")[0]} already exists"
+			log.debug "found ${state.botvacDevices[device]} with id ${device} already exists"
 		}
 	}
 }
