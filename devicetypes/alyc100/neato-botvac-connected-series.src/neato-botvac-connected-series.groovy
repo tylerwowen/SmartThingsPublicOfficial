@@ -1,7 +1,7 @@
 /**
  *  Neato Botvac Connected Series
  *
- *  Copyright 2017 Alex Lee Yuk Cheung
+ *  Copyright 2017,2018,2019 Alex Lee Yuk Cheung
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  05-09-2019: 1.2 - Handle new Long Secret Key format for future Neato Botvac firmware.
  *  23-12-2018: 1.12b - Fix to better support future D3/D5 firmware updates.
  *	20-12-2018: 1.12 - UI improvements. Support for persistent map for D3 firmware v4.3+.
  *	11-11-2018: 1.11 - Add support for turbo clean for D5.
@@ -83,6 +84,7 @@ metadata {
         command "setCleaningMode", ["string"]
         command "setNavigationMode", ["string"]
         command "setPersistentMapMode", ["string"]
+        command "setSecretKey", ["string"]
         command "findMe"
 
 		attribute "network","string"
@@ -371,6 +373,11 @@ def setPersistentMapMode(mode) {
 	} else {
     	log.error("Unsupported persistent map mode: [${mode}]")
     }
+}
+
+def setSecretKey(key) {
+	state.secretKey = key
+	sendEvent(name: 'secretKey', value: state.secretKey, displayed: true)
 }
 
 def poll() {
@@ -698,10 +705,11 @@ def nucleoPOST(path, body) {
 
 def getHMACSignature(date, body) {
 	//request params
-	def robot_serial = device.deviceNetworkId.tokenize("|")[0]
+	def robot_serial = device.deviceNetworkId
     //Format date should be "Fri, 03 Apr 2015 09:12:31 GMT"
 	
-	def robot_secret_key = device.deviceNetworkId.tokenize("|")[1]
+	def robot_secret_key = state.secretKey
+    log.debug "Secret Key: $robot_secret_key"
 
 	// build string to be signed
 	def string_to_sign = "${robot_serial.toLowerCase()}\n${date}\n${body}"
