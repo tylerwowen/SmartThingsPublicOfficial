@@ -13,7 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
- *  05-09-2019: 1.2 - Handle new Long Secret Key format for future Neato Botvac firmware.
+ *  05-09-2019: 1.13 - Handle new Long Secret Key format for future Neato Botvac firmware.
  *  23-12-2018: 1.12b - Fix to better support future D3/D5 firmware updates.
  *	20-12-2018: 1.12 - UI improvements. Support for persistent map for D3 firmware v4.3+.
  *	11-11-2018: 1.11 - Add support for turbo clean for D5.
