@@ -1,7 +1,7 @@
 /**
  *  Neato (Connect)
  *
- *  Copyright 2016 Alex Lee Yuk Cheung
+ *  Copyright 2016,2017,2018,2019 Alex Lee Yuk Cheung
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	05-09-2019:	1.2.5 - Handle new Long Secret Key format for future Neato Botvac firmware.
  *	28-06-2018:	1.2.4b - Bug fix. Stop nullPointerException on reschedule method.
  *	18-04-2018:	1.2.4 - Show restriction summary text in app when contact sensor restrictions are configured.
  *	19-01-2018:	1.2.3 - Allow contact sensors to trigger clean if conditions are met.
@@ -637,8 +638,7 @@ def updateDevices() {
 	devices.each { device -> 
     	if (device.serial != null) {
         	selectors.add("${device.serial}|${device.secret_key}")
-            def value
-        	value = "Neato Botvac - " + device.name
+            def value = "Neato Botvac - " + device.name
 			def key = device.serial + "|" + device.secret_key
 			state.botvacDevices["${key}"] = value
       	}
@@ -666,21 +666,22 @@ def addBotvacs() {
 
 	selectedBotvacs.each { device ->
     	
-        def childDevice = getChildDevice("${device}")
+        def childDevice = getChildDevice(device.tokenize("|")[0])
         
         if (!childDevice) { 
-    		log.info("Adding Neato Botvac device ${device}: ${state.botvacDevices[device]}")
+    		log.info("Adding Neato Botvac device ${device.tokenize("|")[0]}: ${state.botvacDevices[device]}")
             
         	def data = [
                 name: state.botvacDevices[device],
-				label: state.botvacDevices[device],
+				label: state.botvacDevices[device]
 			]
-            childDevice = addChildDevice(app.namespace, "Neato Botvac Connected Series", "$device", null, data)
+            childDevice = addChildDevice(app.namespace, "Neato Botvac Connected Series", device.tokenize("|")[0], null, data)
+            childDevice.setSecretKey(device.tokenize("|")[1])
             childDevice.refresh()
            
-			log.debug "Created ${state.botvacDevices[device]} with id: ${device}"
+			log.debug "Created ${state.botvacDevices[device]} with id: ${device.tokenize("|")[0]}"
 		} else {
-			log.debug "found ${state.botvacDevices[device]} with id ${device} already exists"
+			log.debug "found ${state.botvacDevices[device]} with id ${device.tokenize("|")[0]} already exists"
 		}
 	}
 }
@@ -998,7 +999,7 @@ def smartScheduleHandler(evt) {
            	def delay = 0
             if (settings["ssStartDelay#$botvacId"]) delay = settings["ssStartDelay#$botvacId"] * 60
             if (delay > 0) {
-        		runIn(delay, startConditionalClean, [data: [botvacId: botvacId], overwrite: false])
+        		runIn(delay, startConditionalClean, [overwrite: false, data: [botvacId: botvacId]])
             } else {
                	startConditionalClean([botvacId: botvacId])
             }
@@ -1381,7 +1382,7 @@ def getApiEndpoint()         { return "https://apps.neatorobotics.com" }
 def getSmartThingsClientId() { return appSettings.clientId }
 def beehiveURL(path = '/') 	 { return "https://beehive.neatocloud.com${path}" }
 private def textVersion() {
-    def text = "Neato (Connect)\nVersion: 1.2.4b\nDate: 28062018(1000)"
+    def text = "Neato (Connect)\nVersion: 1.2.5\nDate: 05092019(1200)"
 }
 
 private def textCopyright() {
