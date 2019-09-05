@@ -377,7 +377,7 @@ def setPersistentMapMode(mode) {
 
 def setSecretKey(key) {
 	state.secretKey = key
-	sendEvent(name: 'secretKey', value: state.secretKey, displayed: true)
+	sendEvent(name: 'secretKey', value: state.secretKey, displayed: false)
 }
 
 def poll() {
@@ -709,7 +709,6 @@ def getHMACSignature(date, body) {
     //Format date should be "Fri, 03 Apr 2015 09:12:31 GMT"
 	
 	def robot_secret_key = state.secretKey
-    log.debug "Secret Key: $robot_secret_key"
 
 	// build string to be signed
 	def string_to_sign = "${robot_serial.toLowerCase()}\n${date}\n${body}"
