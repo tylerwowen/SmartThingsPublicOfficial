@@ -321,7 +321,6 @@ def updateDevices() {
             }
     }
     
-   	log.debug selectors
     //Remove devices if does not exist on the Sure PetCare platform
     getChildDevices().findAll { !selectors.contains("${it.deviceNetworkId}") }.each {
 		log.info("Deleting ${it.deviceNetworkId}")
@@ -347,7 +346,6 @@ def updateLocations() {
 			def key = location.id
 			state.surePetCareLocations["${key}"] = value
     }
-   	log.debug selectors
 }
 
 def addHub() {
