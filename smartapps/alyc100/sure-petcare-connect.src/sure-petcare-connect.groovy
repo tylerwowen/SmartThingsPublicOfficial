@@ -623,7 +623,7 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 
 
 private def textVersion() {
-    def text = "Sure PetCare (Connect)\nVersion: 1.0 BETA\nDate: 22082019(1500)"
+    def text = "Sure PetCare (Connect)\nVersion: 1.0\nDate: 06092019(2300)"
 }
 
 private def textCopyright() {
