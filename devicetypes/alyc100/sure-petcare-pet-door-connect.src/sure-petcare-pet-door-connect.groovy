@@ -123,9 +123,9 @@ def poll() {
 			break;
         }
     if (lockMode == "none") {
-    	 sendEvent(name: "lock", value: "unlocked", isStateChange: true, displayed: true)
+    	 sendEvent(name: "lock", value: "unlocked", displayed: true)
     } else {
-    	 sendEvent(name: "lock", value: "locked", isStateChange: true, displayed: true)
+    	 sendEvent(name: "lock", value: "locked", displayed: true)
     }
     sendEvent(name: "lockMode", value: lockMode)
     if (flap.status.online) {
