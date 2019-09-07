@@ -37,7 +37,7 @@ metadata {
 			state("not present",labelIcon:"st.presence.tile.mobile-not-present",backgroundColor:"#cccccc")
 		}
         
-        valueTile("tag_id", "device.tag_id", decoration: "flat", width: 4, height: 1) {
+        valueTile("tag", "device.tag", decoration: "flat", width: 4, height: 1) {
 			state "default", label: 'Tag Number:\n${currentValue}'
 		}
         
@@ -87,7 +87,8 @@ def poll() {
     def tag_id = pet.tag_id
     response = resp.data.data.tags
     def tag = response.find{tag_id == it.id}
-    sendEvent(name: 'tag_id', value: tag.tag.toString() + ".", displayed: true)
+    sendEvent(name: 'tag_id', value: tag_id, displayed: true)
+    sendEvent(name: 'tag', value: tag.tag.toString() + ".", displayed: true)
     
     //Pick up look through flap events
     resp = parent.apiGET("/api/timeline/household/" + parent.getHouseholdID() + "/pet")
