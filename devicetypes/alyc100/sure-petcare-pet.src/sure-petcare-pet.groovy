@@ -50,7 +50,7 @@ metadata {
 		}
 
         main(["presence"])
-        details(["presence", "tag_id", "petInfo", "refresh"])
+        details(["presence", "tag", "petInfo", "refresh"])
 	}
 }
 
