@@ -19,7 +19,7 @@
  */
 metadata {
 	definition (name: "Sure PetCare Pet", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.r.sensor.presence", mnmn: "SmartThings", vid: "surepet-pet-presence") {
-		capability "Actuator"
+		capability "Sensor"
 		capability "Polling"
 		capability "Refresh"
 		capability "Presence Sensor"
