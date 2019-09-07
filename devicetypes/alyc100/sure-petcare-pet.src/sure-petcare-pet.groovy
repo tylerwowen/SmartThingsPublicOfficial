@@ -13,6 +13,8 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *	VERSION HISTORY
+ *	07.09.2019 - v1.0b - Bug fix. Change method of finding 'look through' events.
+ 			   - Add Tag ID to tiles
  *	06.09.2019 - v1.0 - Initial Version
  */
 metadata {
@@ -35,6 +37,10 @@ metadata {
 			state("not present",labelIcon:"st.presence.tile.mobile-not-present",backgroundColor:"#cccccc")
 		}
         
+        valueTile("tag_id", "device.tag_id", decoration: "flat", width: 4, height: 1) {
+			state "default", label: 'Tag Number:\n${currentValue}'
+		}
+        
         valueTile("petInfo", "device.petInfo", decoration: "flat", width: 4, height: 1) {
 			state "default", label: '${currentValue}'
 		}
@@ -44,7 +50,7 @@ metadata {
 		}
 
         main(["presence"])
-        details(["presence", "petInfo", "refresh"])
+        details(["presence", "tag_id", "petInfo", "refresh"])
 	}
 }
 
@@ -67,15 +73,21 @@ def updated() {
 def poll() {
 	log.debug "Executing 'poll' for ${device} ${this} ${device.deviceNetworkId}"
     
-    def resp = parent.apiGET("/api/pet/" + device.deviceNetworkId + "/position")
+    def resp = parent.apiGET("/api/me/start")
 	if (resp.status != 200) {
 		log.error("Unexpected result in poll(): [${resp.status}] ${resp.data}")
 		return []
 	}
-    
-    def presence = resp.data.data.where
+    def response = resp.data.data.pets
+    def pet = response.find{device.deviceNetworkId.toInteger() == it.id}
+    def presence = pet.position.where
     def pres = (presence == 1) ? "present" : "not present"
     sendEvent(name: 'presence', value: pres, descriptionText: "${device.name} is ${pres.toLowerCase()}", displayed: true)
+    
+    def tag_id = pet.tag_id
+    response = resp.data.data.tags
+    def tag = response.find{tag_id == it.id}
+    sendEvent(name: 'tag_id', value: tag.tag.toString() + ".", displayed: true)
     
     //Pick up look through flap events
     resp = parent.apiGET("/api/timeline/household/" + parent.getHouseholdID() + "/pet")
@@ -89,26 +101,22 @@ def poll() {
     }
     
     for(def entry : resp.data.data) {
-    	if (entry.pets) {
-         	if (entry.pets[0].id == device.deviceNetworkId.toInteger()) {
-        		if (entry.movements) { 
-                	if (entry.movements[0].direction == 0) {
-                        def movementDate = new Date().parse("yyyy-MM-dd'T'HH:mm:ssXXX", entry.movements[0].created_at)
-            			if (state.lastTimePetLooked < movementDate.getTime()) {
-                			state.lastTimePetLooked = movementDate.getTime()
-                            //Notify pet peek event.
-                            def entryDeviceName = "flap"
-                            if (entry.devices) {
-                            	entryDeviceName = entry.devices[0].name
-                            }
-                            def msg = "${device.name} looked through ${entryDeviceName} at ${movementDate.format("hh:mm aaa dd MMM yyyy", parent.getTimeZone())}"
-                            sendEvent(name: "petInfo", value: msg, displayed: true, linkText: "${device.displayName}", descriptionText: msg)
-                            break
-                		}
+    	if (entry.movements) { 
+        	if (entry.movements[0].tag_id == device.currentState("tag_id").getValue() && entry.movements[0].direction == 0) {
+            	def movementDate = new Date().parse("yyyy-MM-dd'T'HH:mm:ssXXX", entry.movements[0].created_at)
+            	if (state.lastTimePetLooked < movementDate.getTime()) {
+                	state.lastTimePetLooked = movementDate.getTime()
+                    //Notify pet peek event.
+                    def entryDeviceName = "flap"
+                    if (entry.devices) {
+                    	entryDeviceName = entry.devices[0].name
                     }
-                }
-            }
-        } 
+                    def msg = "${device.name} looked through ${entryDeviceName} at ${movementDate.format("hh:mm aaa dd MMM yyyy", parent.getTimeZone())}"
+                    sendEvent(name: "petInfo", value: msg, displayed: true, linkText: "${device.displayName}", descriptionText: msg)
+                	break
+            	}
+        	}
+    	} 
 	}
 }
 
