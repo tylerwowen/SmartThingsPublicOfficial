@@ -448,8 +448,8 @@ def refreshDevices() {
         		//WORKAROUND - Catch unexplained exception when refreshing devices.
         		logResponse(e.response)
         	}
-        } else if (device.name.contains("cat") || device.name.contains("dog")  || device.name.contains("Pet Door")) {
-        	log.info("High Freq Refreshing device ${device.name}...")
+        } else if (device.typeName.contains("Pet") || device.typeName.contains("Pet Door Connect")) {
+        	log.info("High Freq Refreshing device ${device.typeName}...")
 			device.refresh()
         }
 	}
