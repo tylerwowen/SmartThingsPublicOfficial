@@ -13,6 +13,8 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  * 	VERSION HISTORY
+ *
+ *	07.09.2019 - v1.1 - Added Notification Framework
  *	06.09.2019 - v1.0 - Initial Version
  */
 definition(
@@ -31,6 +33,7 @@ preferences {
 	page(name:"firstPage", title:"Sure PetCare Device Setup", content:"firstPage", install: true)
     page(name: "loginPAGE")
     page(name: "selectDevicePAGE")
+    page(name: "preferencesPAGE")
 }
 
 def apiURL(path = '/') 			 { return "https://app.api.surehub.io${path}" }
@@ -55,6 +58,9 @@ def firstPage() {
             if (stateTokenPresent()) {           	
                 section ("Choose your Sure PetCare devices:") {
 					href("selectDevicePAGE", title: null, description: devicesSelected() ? getDevicesSelectedString() : "Tap to select Sure PetCare devices", state: devicesSelected())
+        		}
+                section ("Notifications:") {
+					href("preferencesPAGE", title: null, description: preferencesSelected() ? getPreferencesString() : "Tap to configure notifications", state: preferencesSelected())
         		}
             } else {
             	section {
@@ -130,9 +136,40 @@ def selectDevicePAGE() {
   }
 }
 
+def preferencesPAGE() {
+	dynamicPage(name: "preferencesPAGE", title: "Preferences", uninstall: false, install: false) {
+    	section {
+    		input "sendPush", "bool", title: "Send as Push?", required: false, defaultValue: false
+			input "sendSMS", "phone", title: "Send as SMS?", required: false, defaultValue: null	
+        }
+    	section("Sure PetCare Notifications:") {			
+			input "sendPetDoorLock", "bool", title: "Notify when pet doors are lock and unlocked?", required: false, defaultValue: false
+            input "sendPetPresence", "bool", title: "Notify when pets arrive and leave?", required: false, defaultValue: false
+            input "sendPetLooked", "bool", title: "Notify when pets look through door?", required: false, defaultValue: false
+            input "sendDoorConnection", "bool", title: "Notify when pet doors lose connection?", required: false, defaultValue: false
+		}        
+    }
+}
+
 def headerSECTION() {
 	return paragraph (image: "https://www.surepetcare.io/assets/images/onboarding/Sure_Petcare_Logo.png",
                   "${textVersion()}")
+}
+
+def preferencesSelected() {
+	return (sendPush || sendSMS != null) && (sendPetDoorLock || sendPetPresence || sendPetLooked || sendDoorConnection) ? "complete" : null
+}
+
+def getPreferencesString() {
+	def listString = ""
+    if (sendPush) listString += "Send Push, "
+    if (sendSMS != null) listString += "Send SMS, "
+    if (sendPetDoorLock) listString += "Pet Door Lock/Unlock, "
+    if (sendPetPresence) listString += "Pet Arrival/Leaving, "
+    if (sendPetLooked) listString += "Pet Looked, "
+    if (sendDoorConnection) listString += "Pet Door Offline, "
+    if (listString != "") listString = listString.substring(0, listString.length() - 2)
+    return listString
 }
 
 def stateTokenPresent() {
@@ -158,22 +195,22 @@ def getDevicesSelectedString() {
     
 	selectedHub.each { childDevice ->    
     	if (null != state.surePetCareHubDevices)
-    		listString += "${state.surePetCareHubDevices[childDevice]}\n"
+    		listString += "\n• " + state.surePetCareHubDevices[childDevice]
     }
   
 	selectedPetDoorConnect.each { childDevice ->
       if (null != state.surePetCarePetDoorConnectDevices) 
-           	listString += "${state.surePetCarePetDoorConnectDevices[childDevice]}\n"
+           	listString += "\n• " + state.surePetCarePetDoorConnectDevices[childDevice]
 	}
     
 	selectedDualScanCatFlapConnect.each { childDevice ->
         if (null != state.surePetCareDualScanCatFlapConnectDevices)
-            listString += "${state.surePetCareDualScanCatFlapConnectDevices[childDevice]}\n"
+            listString += "\n• " + state.surePetCareDualScanCatFlapConnectDevices[childDevice]
 	}
     
     selectedPet.each { childDevice ->
         if (null != state.surePetPets)
-            listString += "${state.surePetPets[childDevice]}\n"
+            listString += "\n• " + state.surePetPets[childDevice]
 	}
     // Returns the completed list, and trims the last carrige return
 	return listString.trim()
@@ -193,6 +230,7 @@ def installed() {
 // called after settings are changed
 def updated() {
 	log.debug "updated"
+    unsubscribe()
 	initialize()
     unschedule('refreshDevices')
     runEvery1Minute('refreshDevices')
@@ -227,6 +265,39 @@ def initialize() {
     	addPet()
     }
  	runIn(10, 'refreshDevices') // Asynchronously refresh devices so we don't block
+    
+    //subscribe to events for notifications if activated
+    if (preferencesSelected() == "complete") {
+    	getChildDevices().each { childDevice -> 
+        	if (childDevice.typeName == "Sure PetCare Pet") {
+  				subscribe(childDevice, "petInfo", evtHandler, [filterEvents: false])
+  				subscribe(childDevice, "presence", evtHandler, [filterEvents: false])
+    		}
+    		if (childDevice.typeName == "Sure PetCare Pet Door Connect") {
+    			subscribe(childDevice, "lockMode", evtHandler, [filterEvents: false])
+                subscribe(childDevice, "network", evtHandler, [filterEvents: false])
+    		}
+    	}
+    }
+}
+
+
+//Event Handler for Connect App
+def evtHandler(evt) {
+	def msg
+    if (evt.name == "petInfo") {
+    	msg = evt.value
+        if (settings.sendPetLooked) messageHandler(msg, false)  
+    } else if (evt.name == "presence") {
+    	msg = (evt.value == "present") ? "${evt.displayName} has arrived." : "${evt.displayName} is leaving."
+        if (settings.sendPetPresence) messageHandler(msg, false)  
+    } else if (evt.name == "lockMode") {
+    	msg = (evt.value == "both") ? "${evt.displayName} is locked." : "${evt.displayName} is unlocked."
+        if (settings.sendPetDoorLock) messageHandler(msg, false)  
+    } else if (evt.name == "network") {
+    	msg = (evt.value == "Connected") ? "${evt.displayName} is online." : "${evt.displayName} is offline."
+        if (settings.sendDoorConnection) messageHandler(msg, false)  
+    }
 }
 
 def updateDevices() {
@@ -586,6 +657,16 @@ def getHouseholdID() {
 	return selectedLocation
 }
 
+def messageHandler(msg, forceFlag) {
+	log.debug "Executing 'messageHandler for $msg. Forcing is $forceFlag'"
+	if (settings.sendSMS != null && !forceFlag) {
+		sendSms(settings.sendSMS, msg) 
+	}
+    if (settings.sendPush || forceFlag) {
+		sendPush(msg)
+	}
+}
+
 def getTimeZone() {
 	def tz = null
 	if(location?.timeZone) { tz = location?.timeZone }
@@ -623,7 +704,7 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 
 
 private def textVersion() {
-    def text = "Sure PetCare (Connect)\nVersion: 1.0\nDate: 06092019(2300)"
+    def text = "Sure PetCare (Connect)\nVersion: 1.1\nDate: 07092019(1300)"
 }
 
 private def textCopyright() {
