@@ -14,7 +14,7 @@
  *
  * 	VERSION HISTORY
  *
- *	07.09.2019 - v1.1 - Added Notification Framework
+ *	07.09.2019 - v1.01 - Added Notification Framework
  *	06.09.2019 - v1.0 - Initial Version
  */
 definition(
@@ -704,7 +704,7 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 
 
 private def textVersion() {
-    def text = "Sure PetCare (Connect)\nVersion: 1.1\nDate: 07092019(1300)"
+    def text = "Sure PetCare (Connect)\nVersion: 1.01\nDate: 07092019(1300)"
 }
 
 private def textCopyright() {
