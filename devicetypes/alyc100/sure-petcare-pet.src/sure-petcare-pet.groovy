@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *	VERSION HISTORY
+ *	08.09.2019 - v1.0c - Bug fix. Fix tag id comparison for generating look through events.
  *	07.09.2019 - v1.0b - Bug fix. Change method of finding 'look through' events.
  			   - Add Tag ID to tiles
  *	06.09.2019 - v1.0 - Initial Version
@@ -103,7 +104,8 @@ def poll() {
     
     for(def entry : resp.data.data) {
     	if (entry.movements) { 
-        	if (entry.movements[0].tag_id == device.currentState("tag_id").getValue() && entry.movements[0].direction == 0) {
+        	log.debug device.currentState("tag_id").getValue()
+        	if ((entry.movements[0].tag_id == device.currentState("tag_id").getValue().toInteger()) && entry.movements[0].direction == 0) {
             	def movementDate = new Date().parse("yyyy-MM-dd'T'HH:mm:ssXXX", entry.movements[0].created_at)
             	if (state.lastTimePetLooked < movementDate.getTime()) {
                 	state.lastTimePetLooked = movementDate.getTime()
