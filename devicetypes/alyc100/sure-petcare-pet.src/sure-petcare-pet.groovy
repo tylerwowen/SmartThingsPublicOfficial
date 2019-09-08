@@ -104,7 +104,6 @@ def poll() {
     
     for(def entry : resp.data.data) {
     	if (entry.movements) { 
-        	log.debug device.currentState("tag_id").getValue()
         	if ((entry.movements[0].tag_id == device.currentState("tag_id").getValue().toInteger()) && entry.movements[0].direction == 0) {
             	def movementDate = new Date().parse("yyyy-MM-dd'T'HH:mm:ssXXX", entry.movements[0].created_at)
             	if (state.lastTimePetLooked < movementDate.getTime()) {
