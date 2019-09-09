@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *	VERSION HISTORY
+ *  09.09.2019 - v1.1 - Added Keep Pet In option on Pet device for Dual Scan PetCare cat flaps
  *	08.09.2019 - v1.0c - Bug fix. Fix tag id comparison for generating look through events.
  *	07.09.2019 - v1.0b - Bug fix. Change method of finding 'look through' events.
  			   - Add Tag ID to tiles
@@ -25,6 +26,7 @@ metadata {
 		capability "Refresh"
 		capability "Presence Sensor"
         
+        command "toggleIndoorsOnly"
 		command "refresh"
 	}
     
@@ -46,12 +48,18 @@ metadata {
 			state "default", label: '${currentValue}'
 		}
         
+        standardTile("indoorsOnly", "device.indoorsOnly", width: 2, height: 2, decoration: "flat", inactiveLabel: false, canChangeIcon: false) {
+         	state ("true", label:'Keep In', action: "toggleIndoorsOnly", icon: "st.Home.home2", backgroundColor: "#5cb85c", nextState:"false")
+			state ("false", label:'Let Out', action: "toggleIndoorsOnly", icon: "st.Outdoor.outdoor15", backgroundColor: "#f88e4c", nextState:"true")
+			state ("empty", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/empty.png")
+		}
+        
         standardTile("refresh", "device.refresh", width:2, height:2, decoration: "flat") {
 			state("default", label:'refresh', action:"refresh.refresh", icon:"st.secondary.refresh-icon")
 		}
 
         main(["presence"])
-        details(["presence", "tag", "petInfo", "refresh"])
+        details(["presence", "tag", "petInfo", "indoorsOnly", "refresh"])
 	}
 }
 
@@ -84,7 +92,12 @@ def poll() {
     def presence = pet.position.where
     def pres = (presence == 1) ? "present" : "not present"
     sendEvent(name: 'presence', value: pres, descriptionText: "${device.name} is ${pres.toLowerCase()}", displayed: true)
-    
+    if (pet.photo) {
+    	state.photoURL = pet.photo.location
+    }
+    def tagStatus = parent.getTagStatus(device.currentState("tag_id").getValue().toInteger())
+    log.debug "Cat indoors only status is ${tagStatus}"
+    sendEvent(name: 'indoorsOnly', value: tagStatus, displayed: true)
     def tag_id = pet.tag_id
     response = resp.data.data.tags
     def tag = response.find{tag_id == it.id}
@@ -122,11 +135,24 @@ def poll() {
 	}
 }
 
+def toggleIndoorsOnly() {
+	log.debug "Executing 'toggleIndoorsOnly'"
+    def indoorsOnly
+	if (device.currentState("indoorsOnly").getValue() == "false") { 
+    	parent.setTagToIndoorsOnly(device.currentState("tag_id").getValue().toInteger())
+        indoorsOnly = "true"
+    } else { 
+    	parent.setTagToOutdoors(device.currentState("tag_id").getValue().toInteger())
+        indoorsOnly = "false"
+    }
+    sendEvent(name: 'indoorsOnly', value: indoorsOnly, displayed: true)
+}
+
 def refresh() {
 	log.debug "Executing 'refresh'"
 	poll()
 }
 
-def setPhotoUrl(url) {
-	state.photoURL = url
+def getPhotoURL() {
+	return state.photoURL
 }

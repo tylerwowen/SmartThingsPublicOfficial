@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  09.09.2019 - v1.1 - Added Keep Pet In option for Dual Scan devices
  *  06.09.2019 - v1.0 - Initial Version
  */
  
@@ -103,6 +104,7 @@ def poll() {
     
     def response = resp.data.data.devices
     def flap = response.find{device.deviceNetworkId.toInteger() == it.id}
+    sendEvent(name: 'product_id', value: flap.product_id)
     sendEvent(name: "serial_number", value: flap.serial_number)
     sendEvent(name: "mac_address", value: flap.mac_address)
     sendEvent(name: "created_at", value: flap.created_at)
@@ -157,6 +159,7 @@ def toggleLockMode() {
 }
 
 def setLockMode(mode) {
+	log.debug "Executing 'setLockMode'"
 	def modeValue
 	switch (mode) {
     	case "none":
@@ -178,7 +181,18 @@ def setLockMode(mode) {
 	def resp = parent.apiPUT("/api/device/" + device.deviceNetworkId + "/control", body)
 }
 
+def lock() {
+	log.debug "Executing 'lock'"
+	setLockMode("both")
+}
+
+def unlock() {
+	log.debug "Executing 'unlock'"
+	setLockMode("none")
+}
+
 def getBatteryPercent(voltage) {
+	log.debug "Executing 'getBatteryPercent'"
 	def percentage
 	switch (voltage) {
     	case voltage < 4:
@@ -197,16 +211,6 @@ def getBatteryPercent(voltage) {
             percentage = 100
        		break;
     }
-}
-
-def lock() {
-	log.debug "Executing 'lock'"
-	setLockMode("both")
-}
-
-def unlock() {
-	log.debug "Executing 'unlock'"
-	setLockMode("none")
 }
 
 def refresh() {
