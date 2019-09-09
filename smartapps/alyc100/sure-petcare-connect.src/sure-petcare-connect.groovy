@@ -14,6 +14,8 @@
  *
  * 	VERSION HISTORY
  *
+ *  09.09.2019 - v1.1 - Added Keep Pet In option on Pet device for Dual Scan PetCare cat flaps
+ *					  - Added Pet Status with photo.
  *	07.09.2019 - v1.0.1 - Added Notification Framework
  *	06.09.2019 - v1.0 - Initial Version
  */
@@ -56,12 +58,23 @@ def firstPage() {
                 href("loginPAGE", title: null, description: authenticated() ? "Authenticated as " +username : "Tap to enter Sure PetCare account credentials", state: authenticated())
             }
             if (stateTokenPresent()) {           	
-                section ("Choose your Sure PetCare devices:") {
+                section ("Choose your Sure PetCare devices and pets:") {
 					href("selectDevicePAGE", title: null, description: devicesSelected() ? getDevicesSelectedString() : "Tap to select Sure PetCare devices", state: devicesSelected())
         		}
                 section ("Notifications:") {
 					href("preferencesPAGE", title: null, description: preferencesSelected() ? getPreferencesString() : "Tap to configure notifications", state: preferencesSelected())
         		}
+                section("Pets:") {
+                	getChildDevices().findAll { it.typeName == "Sure PetCare Pet" }.each { childDevice -> 
+						try {
+                            paragraph image: "${childDevice.getPhotoURL()}", "${childDevice.displayName} is ${childDevice.currentPresence}."
+						}
+        				catch (e) {
+           					log.trace "Error checking status."
+            				log.trace e
+        				}
+					}
+                }
             } else {
             	section {
             		paragraph "There was a problem connecting to Sure PetCare. Check your user credentials and error logs in SmartThings web console.\n\n${state.loginerrors}"
@@ -145,6 +158,7 @@ def preferencesPAGE() {
     	section("Sure PetCare Notifications:") {			
 			input "sendPetDoorLock", "bool", title: "Notify when pet doors are lock and unlocked?", required: false, defaultValue: false
             input "sendPetPresence", "bool", title: "Notify when pets arrive and leave?", required: false, defaultValue: false
+            input "sendPetIndoors", "bool", title: "Notify when pets are set to indoors only or allowed outdoors?", required: false, defaultValue: false
             input "sendPetLooked", "bool", title: "Notify when pets look through door?", required: false, defaultValue: false
             input "sendDoorConnection", "bool", title: "Notify when pet doors lose connection?", required: false, defaultValue: false
 		}        
@@ -272,6 +286,7 @@ def initialize() {
         	if (childDevice.typeName == "Sure PetCare Pet") {
   				subscribe(childDevice, "petInfo", evtHandler, [filterEvents: false])
   				subscribe(childDevice, "presence", evtHandler, [filterEvents: false])
+  				subscribe(childDevice, "indoorsOnly", evtHandler, [filterEvents: false])
     		}
     		if (childDevice.typeName == "Sure PetCare Pet Door Connect") {
     			subscribe(childDevice, "lockMode", evtHandler, [filterEvents: false])
@@ -291,6 +306,11 @@ def evtHandler(evt) {
     } else if (evt.name == "presence") {
     	msg = (evt.value == "present") ? "${evt.displayName} has arrived." : "${evt.displayName} is leaving."
         if (settings.sendPetPresence) messageHandler(msg, false)  
+    } else if (evt.name == "indoorsOnly") {
+    	if (evt.value != "empty") {
+    		msg = (evt.value == "true") ? "${evt.displayName} is set to indoors only." : "${evt.displayName} is allowed outdoors."
+        	if (settings.sendPetIndoors) messageHandler(msg, false)  
+        }
     } else if (evt.name == "lockMode") {
     	msg = (evt.value == "both") ? "${evt.displayName} is locked." : "${evt.displayName} is unlocked."
         if (settings.sendPetDoorLock) messageHandler(msg, false)  
@@ -626,7 +646,7 @@ def apiPOST(path, body = [:]) {
 
 def apiPUT(path, body = [:]) {
 	def bodyString = new groovy.json.JsonBuilder(body).toString()
-	log.debug("Beginning API POST: ${apiURL(path)}, ${bodyString}")
+	log.debug("Beginning API PUT: ${apiURL(path)}, ${bodyString}")
     try {
     	httpPut(uri: apiURL(path), body: bodyString, headers: apiRequestHeaders() ) {
     		response ->
@@ -651,6 +671,48 @@ def apiGET(path) {
 		logResponse(e.response)
 		return e.response
 	}
+}
+
+//Used by Pet device to get tagID indoors only status for household
+def getTagStatus(tagID) {
+	log.debug "Executing 'getTagStatus'"
+	def result = "empty"
+    def profileList = []
+	getChildDevices().findAll { it.typeName == "Sure PetCare Pet Door Connect" }.each { childDevice -> 
+    	if (childDevice.currentState("product_id").getValue().toInteger() == 6) {
+        	def resp = apiGET("/api/device/" + childDevice.deviceNetworkId + "/tag/" + tagID.toString())
+        	profileList.add(resp.data.data.profile)
+        }
+    }
+    log.debug "Profile List of child devices ${profileList}"
+    result = (profileList.size() > 0 && profileList.contains(2)) ? "false" : "true"
+    return result
+}
+
+//Used by Pet device to set tag ID to indoors only for household
+def setTagToIndoorsOnly(tagID) {
+	log.debug "Executing 'setTagToIndoorsOnly'"
+	getChildDevices().findAll { it.typeName == "Sure PetCare Pet Door Connect" }.each { childDevice -> 
+    	if (childDevice.currentState("product_id").getValue().toInteger() == 6) {
+        	def body = [
+    			profile: 3
+    		]
+			def resp = apiPUT("/api/device/" + childDevice.deviceNetworkId + "/tag/" + tagID, body)
+        }
+    }
+}
+
+//Used by Pet device to set tag ID to allow outdoors for household
+def setTagToOutdoors(tagID) {
+	log.debug "Executing 'setTagToOutdoors'"
+	getChildDevices().findAll { it.typeName == "Sure PetCare Pet Door Connect" }.each { childDevice -> 
+    	if (childDevice.currentState("product_id").getValue().toInteger() == 6) {
+        	def body = [
+    			profile: 2
+    		]
+			def resp = apiPUT("/api/device/" + childDevice.deviceNetworkId + "/tag/" + tagID, body)
+        }
+    }
 }
 
 def getHouseholdID() {
@@ -704,7 +766,7 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 
 
 private def textVersion() {
-    def text = "Sure PetCare (Connect)\nVersion: 1.0.1\nDate: 07092019(1300)"
+    def text = "Sure PetCare (Connect)\nVersion: 1.1\nDate: 09092019(2300)"
 }
 
 private def textCopyright() {
