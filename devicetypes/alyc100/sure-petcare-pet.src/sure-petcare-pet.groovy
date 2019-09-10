@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *	VERSION HISTORY
+ *  10.09.2019 - v1.1b - Improve API call efficiency
  *  09.09.2019 - v1.1 - Added Keep Pet In option on Pet device for Dual Scan PetCare cat flaps
  *	08.09.2019 - v1.0c - Bug fix. Fix tag id comparison for generating look through events.
  *	07.09.2019 - v1.0b - Bug fix. Change method of finding 'look through' events.
@@ -82,12 +83,11 @@ def updated() {
 def poll() {
 	log.debug "Executing 'poll' for ${device} ${this} ${device.deviceNetworkId}"
     
-    def resp = parent.apiGET("/api/me/start")
-	if (resp.status != 200) {
-		log.error("Unexpected result in poll(): [${resp.status}] ${resp.data}")
+    if (!state.statusRespCode || state.statusRespCode != 200) {
+		log.error("Unexpected result in poll(): [${state.statusRespCode}] ${state.statusResponse}")
 		return []
 	}
-    def response = resp.data.data.pets
+    def response = state.statusResponse.data.pets
     def pet = response.find{device.deviceNetworkId.toInteger() == it.id}
     def presence = pet.position.where
     def pres = (presence == 1) ? "present" : "not present"
@@ -99,13 +99,13 @@ def poll() {
     log.debug "Cat indoors only status is ${tagStatus}"
     sendEvent(name: 'indoorsOnly', value: tagStatus, displayed: true)
     def tag_id = pet.tag_id
-    response = resp.data.data.tags
+    response = state.statusResponse.data.tags
     def tag = response.find{tag_id == it.id}
     sendEvent(name: 'tag_id', value: tag_id, displayed: true)
     sendEvent(name: 'tag', value: tag.tag.toString() + ".", displayed: true)
     
     //Pick up look through flap events
-    resp = parent.apiGET("/api/timeline/household/" + parent.getHouseholdID() + "/pet")
+    def resp = parent.apiGET("/api/timeline/household/" + parent.getHouseholdID() + "/pet")
     if (resp.status != 200) {
 		log.error("Unexpected result in poll(): [${resp.status}] ${resp.data}")
 		return []
@@ -146,6 +146,7 @@ def toggleIndoorsOnly() {
         indoorsOnly = "false"
     }
     sendEvent(name: 'indoorsOnly', value: indoorsOnly, displayed: true)
+    runIn(2, "updateStatusAndRefresh")
 }
 
 def refresh() {
@@ -153,6 +154,22 @@ def refresh() {
 	poll()
 }
 
+def updateStatusAndRefresh() {
+	log.debug "Executing 'updateStatusAndRefresh'"
+    def resp = parent.apiGET("/api/me/start")
+    setStatusRespCode(resp.status)
+    setStatusResponse(resp.data)
+    refresh()
+}
+
 def getPhotoURL() {
 	return state.photoURL
+}
+
+def setStatusRespCode(respCode) {
+	state.statusRespCode = respCode
+}
+
+def setStatusResponse(respBody) {
+	state.statusResponse = respBody
 }

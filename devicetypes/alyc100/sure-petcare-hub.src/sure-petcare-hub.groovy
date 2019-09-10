@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  10.09.2019 - v1.1b - Improve API call efficiency
  *  06.09.2019 - v1.0 - Initial Version
  */
  
@@ -62,9 +63,9 @@ metadata {
 		}
         
         standardTile("ledMode", "device.ledMode", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
-			state("bright", label:'LED Bright', action:"toggleLedMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-hub-bright.png")
-            state("dim", label:'LED Dim', action:"toggleLedMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-hub-dim.png")
-            state("off", label:'LED Off', action:"toggleLedMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-hub-off.png")
+			state("bright", label:'LED Bright', action:"toggleLedMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-hub-bright.png", nextState: "off")
+            state("dim", label:'LED Dim', action:"toggleLedMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-hub-dim.png", nextState: "bright")
+            state("off", label:'LED Off', action:"toggleLedMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-hub-off.png", nextState: "dim")
             
 		}
         
@@ -90,14 +91,11 @@ def updated() {
 def poll() {
 	log.debug "Executing 'poll'"
 	
-    def resp = parent.apiGET("/api/me/start")
-	if (resp.status != 200) {
-    	sendEvent(name: 'network', value: "Not Connected" as String)
-		log.error("Unexpected result in poll(): [${resp.status}] ${resp.data}")
+    if (!state.statusRespCode || state.statusRespCode != 200) {
+		log.error("Unexpected result in poll(): [${state.statusRespCode}] ${state.statusResponse}")
 		return []
 	}
-    
-    def response = resp.data.data.devices
+    def response = state.statusResponse.data.devices
     def hub = response.find{device.deviceNetworkId.toInteger() == it.id}
     sendEvent(name: "hubname", value: hub.name)
     sendEvent(name: "serial_number", value: hub.serial_number)
@@ -138,7 +136,7 @@ def toggleLedMode() {
     }
     setLedMode(ledMode)
     sendEvent(name: "ledMode", value: ledMode)
-    refresh()
+    runIn(2, "updateStatusAndRefresh")
 }
 
 def setLedMode(mode) {
@@ -163,4 +161,20 @@ def setLedMode(mode) {
 def refresh() {
 	log.debug "Executing 'refresh'"
 	poll()    
+}
+
+def updateStatusAndRefresh() {
+	log.debug "Executing 'updateStatusAndRefresh'"
+    def resp = parent.apiGET("/api/me/start")
+    setStatusRespCode(resp.status)
+    setStatusResponse(resp.data)
+    refresh()
+}
+
+def setStatusRespCode(respCode) {
+	state.statusRespCode = respCode
+}
+
+def setStatusResponse(respBody) {
+	state.statusResponse = respBody
 }

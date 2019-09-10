@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  10.09.2019 - v1.1b - Improve API call efficiency
  *  09.09.2019 - v1.1 - Added Keep Pet In option for Dual Scan devices
  *  06.09.2019 - v1.0 - Initial Version
  */
@@ -95,14 +96,11 @@ def updated() {
 def poll() {
 	log.debug "Executing 'poll'"
 	
-    def resp = parent.apiGET("/api/me/start")
-	if (resp.status != 200) {
-    	sendEvent(name: 'network', value: "Not Connected" as String)
-		log.error("Unexpected result in poll(): [${resp.status}] ${resp.data}")
+    if (!state.statusRespCode || state.statusRespCode != 200) {
+		log.error("Unexpected result in poll(): [${state.statusRespCode}] ${state.statusResponse}")
 		return []
 	}
-    
-    def response = resp.data.data.devices
+    def response = state.statusResponse.data.devices
     def flap = response.find{device.deviceNetworkId.toInteger() == it.id}
     sendEvent(name: 'product_id', value: flap.product_id)
     sendEvent(name: "serial_number", value: flap.serial_number)
@@ -155,7 +153,7 @@ def toggleLockMode() {
     }
     setLockMode(lockMode)
     sendEvent(name: "lockMode", value: lockMode)
-    refresh()
+    runIn(2, "updateStatusAndRefresh")
 }
 
 def setLockMode(mode) {
@@ -216,4 +214,20 @@ def getBatteryPercent(voltage) {
 def refresh() {
 	log.debug "Executing 'refresh'"
 	poll()    
+}
+
+def updateStatusAndRefresh() {
+	log.debug "Executing 'updateStatusAndRefresh'"
+    def resp = parent.apiGET("/api/me/start")
+    setStatusRespCode(resp.status)
+    setStatusResponse(resp.data)
+    refresh()
+}
+
+def setStatusRespCode(respCode) {
+	state.statusRespCode = respCode
+}
+
+def setStatusResponse(respBody) {
+	state.statusResponse = respBody
 }
