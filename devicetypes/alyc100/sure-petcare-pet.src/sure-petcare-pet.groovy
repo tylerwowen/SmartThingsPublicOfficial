@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *	VERSION HISTORY
+ *  10.09.2019 - v1.1c - Expose setIndoors method to external smart app.
  *  10.09.2019 - v1.1b - Improve API call efficiency
  *  09.09.2019 - v1.1 - Added Keep Pet In option on Pet device for Dual Scan PetCare cat flaps
  *	08.09.2019 - v1.0c - Bug fix. Fix tag id comparison for generating look through events.
@@ -27,6 +28,7 @@ metadata {
 		capability "Refresh"
 		capability "Presence Sensor"
         
+        command "setIndoorsOnly", ["string"]
         command "toggleIndoorsOnly"
 		command "refresh"
 	}
@@ -137,16 +139,12 @@ def poll() {
 
 def toggleIndoorsOnly() {
 	log.debug "Executing 'toggleIndoorsOnly'"
-    def indoorsOnly
 	if (device.currentState("indoorsOnly").getValue() == "false") { 
-    	parent.setTagToIndoorsOnly(device.currentState("tag_id").getValue().toInteger())
-        indoorsOnly = "true"
+    	setIndoorsOnly("true")
     } else { 
-    	parent.setTagToOutdoors(device.currentState("tag_id").getValue().toInteger())
-        indoorsOnly = "false"
+    	setIndoorsOnly("false")
     }
-    sendEvent(name: 'indoorsOnly', value: indoorsOnly, displayed: true)
-    runIn(2, "updateStatusAndRefresh")
+    
 }
 
 def refresh() {
@@ -172,4 +170,18 @@ def setStatusRespCode(respCode) {
 
 def setStatusResponse(respBody) {
 	state.statusResponse = respBody
+}
+
+def setIndoorsOnly(mode) {
+	log.debug "Executing 'setIndoorsOnly' with mode ${mode}"
+	if (mode == "true") { 
+    	parent.setTagToIndoorsOnly(device.currentState("tag_id").getValue().toInteger())
+    	sendEvent(name: 'indoorsOnly', value: mode, displayed: true)
+    } else if (mode == "false") { 
+    	parent.setTagToOutdoors(device.currentState("tag_id").getValue().toInteger())
+    	sendEvent(name: 'indoorsOnly', value: mode, displayed: true)
+    } else {
+    	log.error("Unsupported indoorsOnly mode: [${mode}]")
+    }
+    runIn(2, "updateStatusAndRefresh")
 }

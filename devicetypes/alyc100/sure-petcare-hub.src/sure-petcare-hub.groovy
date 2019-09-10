@@ -140,6 +140,7 @@ def toggleLedMode() {
 }
 
 def setLedMode(mode) {
+	log.debug "Executing 'setLedMode' with mode ${mode}"
 	def modeValue
 	switch (mode) {
     	case "bright":

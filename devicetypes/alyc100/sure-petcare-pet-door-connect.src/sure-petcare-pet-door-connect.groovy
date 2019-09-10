@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  10.09.2019 - v1.2 - Add button controls to change lock status
  *  10.09.2019 - v1.1b - Improve API call efficiency
  *  09.09.2019 - v1.1 - Added Keep Pet In option for Dual Scan devices
  *  06.09.2019 - v1.0 - Initial Version
@@ -33,6 +34,10 @@ metadata {
         
         command "toggleLockMode"
         command "setLockMode", ["string"]
+        command "setLockModeToBoth"
+        command "setLockModeToIn"
+        command "setLockModeToOut"
+        command "setLockModeToNone"
 	}
 
 	tiles(scale: 2) {
@@ -44,6 +49,19 @@ metadata {
 				attributeState("none", label: 'UNLOCKED', action: "toggleLockMode", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-unlock.png", backgroundColor: "#33a1ff", nextState:"waiting")
             	attributeState("waiting", label:'Please Wait...', backgroundColor:"#ffffff")
             }
+		}
+        
+        standardTile("both", "device.switch", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false) {
+			state("default", action:"setLockModeToBoth", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-lock.png")
+		}
+        standardTile("in", "device.switch", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false) {
+			state("default", action:"setLockModeToIn", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-out.png")
+		}
+        standardTile("out", "device.switch", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false) {
+			state("default", action:"setLockModeToOut", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-in.png")
+		}
+        standardTile("none", "device.switch", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false) {
+			state("default", action:"setLockModeToNone", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-unlock.png")
 		}
         valueTile("serial_number", "device.serial_number", decoration: "flat", width: 3, height: 1) {
 			state "default", label: 'Serial Number:\n${currentValue}'
@@ -80,7 +98,7 @@ metadata {
 		}
         
 		main (["flap"])
-		details(["flap", "device_rssi", "battery", "serial_number", "mac_address", "created_at", "updated_at", "network", "refresh"])
+		details(["flap", "both", "in", "device_rssi", "battery",  "out", "none",  "serial_number", "mac_address", "created_at", "updated_at", "network", "refresh"])
 	}
 }
 
@@ -152,12 +170,10 @@ def toggleLockMode() {
     	lockMode = "both"
     }
     setLockMode(lockMode)
-    sendEvent(name: "lockMode", value: lockMode)
-    runIn(2, "updateStatusAndRefresh")
 }
 
 def setLockMode(mode) {
-	log.debug "Executing 'setLockMode'"
+	log.debug "Executing 'setLockMode' with mode ${mode}"
 	def modeValue
 	switch (mode) {
     	case "none":
@@ -169,14 +185,19 @@ def setLockMode(mode) {
         case "in":
         	modeValue = 2
             break;
-        default:
+        case "both":
         	modeValue = 3
 			break;
+        default:
+        	log.error("Unsupported lock mode: [${mode}]")
+        	return []
     }
 	def body = [
     	locking: modeValue
     ]
 	def resp = parent.apiPUT("/api/device/" + device.deviceNetworkId + "/control", body)
+    sendEvent(name: "lockMode", value: mode)
+    runIn(2, "updateStatusAndRefresh")
 }
 
 def lock() {
@@ -230,4 +251,20 @@ def setStatusRespCode(respCode) {
 
 def setStatusResponse(respBody) {
 	state.statusResponse = respBody
+}
+
+def setLockModeToBoth() {
+	setLockMode("both")
+}
+
+def setLockModeToIn() {
+	setLockMode("in")
+}
+
+def setLockModeToOut() {
+	setLockMode("out")
+}
+
+def setLockModeToNone() {
+	setLockMode("none")
 }
