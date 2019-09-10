@@ -98,7 +98,7 @@ metadata {
 		}
         
 		main (["flap"])
-		details(["flap", "both", "in", "device_rssi", "battery",  "out", "none",  "serial_number", "mac_address", "created_at", "updated_at", "network", "refresh"])
+		details(["flap", "both", "in", "battery", "device_rssi", "out", "none",  "serial_number", "mac_address", "created_at", "updated_at", "network", "refresh"])
 	}
 }
 
