@@ -13,7 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  * 	VERSION HISTORY
- *
+ *  10.09.2019 - v1.1b - Improve API call efficiency
  *  09.09.2019 - v1.1 - Added Keep Pet In option on Pet device for Dual Scan PetCare cat flaps
  *					  - Added Pet Status with photo.
  *	07.09.2019 - v1.0.1 - Added Notification Framework
@@ -530,7 +530,10 @@ def refreshDevices() {
     } else {
     	atomicState.refreshCounter = atomicState.refreshCounter + 1
     }
+    def resp = apiGET("/api/me/start")
 	getChildDevices().each { device ->
+    	device.setStatusRespCode(resp.status)
+        device.setStatusResponse(resp.data)
     	if (atomicState.refreshCounter == 10) {
         	log.info("Low Freq Refreshing device ${device.name} ...")
             try {
@@ -656,6 +659,9 @@ def apiPUT(path, body = [:]) {
 	} catch (groovyx.net.http.HttpResponseException e) {
 		logResponse(e.response)
 		return e.response
+	}  catch (Exception e) {
+		logResponse(e.response)
+		return e.response
 	}
 }
 
@@ -766,7 +772,7 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 
 
 private def textVersion() {
-    def text = "Sure PetCare (Connect)\nVersion: 1.1\nDate: 09092019(2300)"
+    def text = "Sure PetCare (Connect)\nVersion: 1.1b\nDate: 10092019(1300)"
 }
 
 private def textCopyright() {
