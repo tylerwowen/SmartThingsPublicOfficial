@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  * 	VERSION HISTORY
+ *  13.09.2019 - v1.2 - Curfew option on PetCare doors
  *  10.09.2019 - v1.1b - Improve API call efficiency
  *  09.09.2019 - v1.1 - Added Keep Pet In option on Pet device for Dual Scan PetCare cat flaps
  *					  - Added Pet Status with photo.
@@ -35,7 +36,9 @@ preferences {
 	page(name:"firstPage", title:"Sure PetCare Device Setup", content:"firstPage", install: true)
     page(name: "loginPAGE")
     page(name: "selectDevicePAGE")
+    page(name: "curfewPAGE")
     page(name: "preferencesPAGE")
+    page(name: "timeIntervalPAGE")
 }
 
 def apiURL(path = '/') 			 { return "https://app.api.surehub.io${path}" }
@@ -57,23 +60,39 @@ def firstPage() {
             	headerSECTION()
                 href("loginPAGE", title: null, description: authenticated() ? "Authenticated as " +username : "Tap to enter Sure PetCare account credentials", state: authenticated())
             }
-            if (stateTokenPresent()) {           	
+            if (stateTokenPresent()) {    
                 section ("Choose your Sure PetCare devices and pets:") {
 					href("selectDevicePAGE", title: null, description: devicesSelected() ? getDevicesSelectedString() : "Tap to select Sure PetCare devices", state: devicesSelected())
         		}
-                section ("Notifications:") {
-					href("preferencesPAGE", title: null, description: preferencesSelected() ? getPreferencesString() : "Tap to configure notifications", state: preferencesSelected())
-        		}
-                section("Pets:") {
-                	getChildDevices().findAll { it.typeName == "Sure PetCare Pet" }.each { childDevice -> 
-						try {
-                            paragraph image: "${childDevice.getPhotoURL()}", "${childDevice.displayName} is ${childDevice.currentPresence}."
+                if (devicesSelected() == "complete") {
+                	section ("Curfew Configuration:") {
+						if (selectedPetDoorConnect && selectedPetDoorConnect.size() > 0) {
+                			selectedPetDoorConnect.each() {
+                           		def curfewEnabled = curfewSelected(it)
+                            	href("curfewPAGE", params: ["deviceId": it], title: "Curfew for ${state.surePetCarePetDoorConnectDevices[it]}", description: settings["curfewEnabled#$it"] ? "${getSmartScheduleString(it)}" : "Tap to configure curfew for ${state.surePetCarePetDoorConnectDevices[it]}", state: curfewEnabled, required: false, submitOnChange: false)
+        					}
+                		}
+                        if (selectedDualScanCatFlapConnect && selectedDualScanCatFlapConnect.size() > 0) {
+                			settings.selectedDualScanCatFlapConnect.each() {
+                           		def curfewEnabled = curfewSelected(it)
+                            	href("curfewPAGE", params: ["deviceId": it], title: "Curfew for ${state.surePetCareDualScanCatFlapConnectDevices[it]}", description: settings["curfewEnabled#$it"] ? "${getCurfewString(it)}" : "Tap to configure curfew for ${state.surePetCareDualScanCatFlapConnectDevices[it]}", state: curfewEnabled, required: false, submitOnChange: false)
+        					}
+                		}
+                	}
+                	section ("Notifications:") {
+						href("preferencesPAGE", title: null, description: preferencesSelected() ? getPreferencesString() : "Tap to configure notifications", state: preferencesSelected())
+        			}
+                	section("Pets:") {
+                		getChildDevices().findAll { it.typeName == "Sure PetCare Pet" }.each { childDevice -> 
+							try {
+                            	paragraph image: "${childDevice.getPhotoURL()}", "${childDevice.displayName} is ${childDevice.currentPresence}."
+							}
+        					catch (e) {
+           						log.trace "Error checking status."
+            					log.trace e
+        					}
 						}
-        				catch (e) {
-           					log.trace "Error checking status."
-            				log.trace e
-        				}
-					}
+                	}
                 }
             } else {
             	section {
@@ -147,6 +166,43 @@ def selectDevicePAGE() {
 			}
     }
   }
+}
+
+def curfewPAGE(params) {
+	log.debug "PARAMS: $params"
+    if (params.containsKey("deviceId")) state.configDeviceId = params?.deviceId
+	def deviceId = state.configDeviceId
+	return dynamicPage(name: "curfewPAGE", title: "Curfew Settings", install: false, uninstall: false) { 
+    	section() {
+        	paragraph "Configure a curfew schedule for your Pet Door / Cat Flap."
+        	input "curfewEnabled#$deviceId", "bool", title: "Enable Curfew?", required: false, defaultValue: false, submitOnChange: true
+        }
+            if (settings["curfewEnabled#$deviceId"]) {
+            	
+                section("Curfew Time:") {
+					//Define time of day
+                	paragraph "Set the time of your curfew."
+                    def greyedOutTime = greyedOutTime(settings["starting#$deviceId"], settings["ending#$deviceId"])
+                    def timeLabel = getTimeLabel(settings["starting#$deviceId"], settings["ending#$deviceId"])
+                	href ("timeIntervalPAGE", params: ["deviceId": deviceId], title: "Set curfew during a certain time", description: timeLabel, state: greyedOutTime, refreshAfterSelection:true)
+                }
+                /*section("Notifications:") {
+                paragraph "Turn on SmartSchedule notifications. You can configure specific recipients via Notification settings section."
+                	input "ssNotification", "bool", title: "Enable SmartSchedule notifications?", required: false, defaultValue: true
+              	} */ 
+            }
+        }
+    
+}
+
+def timeIntervalPAGE(params) {
+	def deviceId = params.deviceId
+	return dynamicPage(name: "timeIntervalPAGE", title: "Only during a certain time", refreshAfterSelection:true) {
+		section {
+			input "starting#$deviceId", "time", title: "Starting", required: false
+			input "ending#$deviceId", "time", title: "Ending", required: false
+		}
+	}
 }
 
 def preferencesPAGE() {
@@ -230,6 +286,54 @@ def getDevicesSelectedString() {
 	return listString.trim()
 }
 
+def curfewSelected(deviceId) {
+	return settings["curfewEnabled#$deviceId"] ? "complete" : null
+}
+
+def getCurfewString(deviceId) {
+	def listString = ""
+    listString += "The following curfew applies:\n"
+    if (settings["curfewEnabled#$deviceId"]) listString += "• ${getTimeLabel(settings["starting#$deviceId"], settings["ending#$deviceId"])}\n" 
+    return listString
+}
+
+private hhmm(time, fmt = "HH:mm") {
+	def t = timeToday(time, location.timeZone)
+	def f = new java.text.SimpleDateFormat(fmt)
+    if (getTimeZone()) { f.setTimeZone(location.timeZone ?: timeZone(time)) }
+	f.format(t)
+}
+
+private timeToString(time, fmt) {
+	def t = timeToday(time, location.timeZone)
+	def f = new java.text.SimpleDateFormat(fmt)
+    if (getTimeZone()) { f.setTimeZone(location.timeZone ?: timeZone(time)) }
+	f.format(t)
+}
+
+def getTimeLabel(starting, ending){
+	def timeLabel = "Tap to set"
+
+    if(starting && ending){
+    	timeLabel = "Between" + " " + hhmm(starting) + " "  + "and" + " " +  hhmm(ending)
+    }
+    else if (starting) {
+		timeLabel = "Start at" + " " + hhmm(starting)
+    }
+    else if(ending){
+    timeLabel = "End at" + hhmm(ending)
+    }
+	timeLabel
+}
+
+def greyedOutTime(starting, ending){
+	def result = ""
+    if (starting || ending) {
+    	result = "complete"
+    }
+    result
+}
+
 // App lifecycle hooks
 
 def installed() {
@@ -294,8 +398,42 @@ def initialize() {
     		}
     	}
     }
+    //enable/disable curfew for pet door devices
+    syncCurfewSettings()
 }
 
+def syncCurfewSettings() {
+	getChildDevices().each { childDevice -> 
+    	if (childDevice.typeName == "Sure PetCare Pet Door Connect") {
+        	def deviceId = childDevice.deviceNetworkId
+            if (settings["curfewEnabled#$deviceId"]) {
+                def curfew = [
+        			enabled: true,
+                    lock_time: "${hhmm(settings["starting#$deviceId"])}",
+                    unlock_time: "${hhmm(settings["ending#$deviceId"])}"
+        		]
+                def curfewList = []
+				curfewList.add(curfew)
+            	def body = [
+    				curfew: curfewList
+    			]
+				def resp = apiPUT("/api/device/" + childDevice.deviceNetworkId + "/control", body)
+            } else {
+                def curfew = [
+        			enabled: false,
+                    lock_time: "${hhmm(settings["starting#$deviceId"])}",
+                    unlock_time: "${hhmm(settings["ending#$deviceId"])}"
+        		]
+                def curfewList = []
+				curfewList.add(curfew)
+            	def body = [
+    				curfew: curfewList
+    			]
+				def resp = apiPUT("/api/device/" + childDevice.deviceNetworkId + "/control", body)
+            }
+        }
+    }
+}
 
 //Event Handler for Connect App
 def evtHandler(evt) {
@@ -534,7 +672,22 @@ def refreshDevices() {
 	getChildDevices().each { device ->
     	device.setStatusRespCode(resp.status)
         device.setStatusResponse(resp.data)
-    	if (atomicState.refreshCounter == 10) {
+    	if (device.typeName == "Sure PetCare Pet") {
+        	log.info("High Freq Refreshing device ${device.typeName}...")
+			device.refresh()
+        } else if (device.typeName == "Sure PetCare Pet Door Connect") {
+        	log.info("High Freq Refreshing device ${device.typeName}...")
+			device.refresh()
+        	//Update curfew status
+            def flap = resp.data.data.devices.find{device.deviceNetworkId.toInteger() == it.id}
+            if (flap.control.curfew && !flap.control.curfew.isEmpty()) {
+            	app.updateSetting("curfewEnabled#${device.deviceNetworkId}", [type: "bool", value: true]) 
+                app.updateSetting("starting#${device.deviceNetworkId}", [type: "time", value: timeToString(flap.control.curfew[0].lock_time, "yyyy-MM-dd'T'HH:mm:ss.SSSXX")]) 
+                app.updateSetting("ending#${device.deviceNetworkId}", [type: "time", value: timeToString(flap.control.curfew[0].unlock_time, "yyyy-MM-dd'T'HH:mm:ss.SSSXX")]) 
+            } else {
+            	app.updateSetting("curfewEnabled#${device.deviceNetworkId}", [type: bool, value: false]) 
+            }
+        } else if (atomicState.refreshCounter == 10) {
         	log.info("Low Freq Refreshing device ${device.name} ...")
             try {
     			device.refresh()
@@ -542,10 +695,7 @@ def refreshDevices() {
         		//WORKAROUND - Catch unexplained exception when refreshing devices.
         		logResponse(e.response)
         	}
-        } else if (device.typeName.contains("Sure PetCare Pet") || device.typeName.contains("Pet Door Connect")) {
-        	log.info("High Freq Refreshing device ${device.typeName}...")
-			device.refresh()
-        }
+        } 
 	}
 }
 
@@ -772,7 +922,7 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 
 
 private def textVersion() {
-    def text = "Sure PetCare (Connect)\nVersion: 1.1b\nDate: 10092019(1300)"
+    def text = "Sure PetCare (Connect)\nVersion: 1.2\nDate: 13092019(1600)"
 }
 
 private def textCopyright() {
