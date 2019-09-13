@@ -396,35 +396,40 @@ def initialize() {
     			subscribe(childDevice, "lockMode", evtHandler, [filterEvents: false])
                 subscribe(childDevice, "network", evtHandler, [filterEvents: false])
     			//enable/disable curfew for pet door devices
-    			def deviceId = childDevice.deviceNetworkId
-                def body
-            	if (settings["curfewEnabled#$deviceId"]) {
-                	def curfew = [
-        				enabled: true,
-                    	lock_time: "${hhmm(settings["starting#$deviceId"])}",
-                    	unlock_time: "${hhmm(settings["ending#$deviceId"])}"
-        			]
-                	def curfewList = []
-					curfewList.add(curfew)
-            		body = [
-    					curfew: curfewList
-    				]
-            	} else {
-                	def curfew = [
-        				enabled: false,
-                    	lock_time: "${hhmm(settings["starting#$deviceId"])}",
-                    	unlock_time: "${hhmm(settings["ending#$deviceId"])}"
-        			]
-                	def curfewList = []
-					curfewList.add(curfew)
-            		body = [
-    					curfew: curfewList
-    				]
-            	}
-				apiPUT("/api/device/" + deviceId + "/control", body)
+                runIn(1, syncCurfewSettings, [data: [deviceId: deviceId]])
     		}
     	}
     }
+}
+
+//enable/disable curfew for pet door devices
+def syncCurfewSettings(data) {
+	def deviceId = data.deviceId
+    def body
+    if (settings["curfewEnabled#$deviceId"]) {
+    	def curfew = [
+        	enabled: true,
+            lock_time: "${hhmm(settings["starting#$deviceId"])}",
+            unlock_time: "${hhmm(settings["ending#$deviceId"])}"
+        ]
+        def curfewList = []
+		curfewList.add(curfew)
+        body = [
+    		curfew: curfewList
+    	]
+        } else {
+            def curfew = [
+        		enabled: false,
+                lock_time: "${hhmm(settings["starting#$deviceId"])}",
+                unlock_time: "${hhmm(settings["ending#$deviceId"])}"
+        	]
+            def curfewList = []
+			curfewList.add(curfew)
+            body = [
+    			curfew: curfewList
+    		]
+        }
+		apiPUT("/api/device/" + deviceId + "/control", body)
 }
 
 //Event Handler for Connect App
