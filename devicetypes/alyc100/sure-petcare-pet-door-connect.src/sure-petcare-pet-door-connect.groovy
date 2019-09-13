@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  13.09.2019 - v1.2.1 - Add curfew status tile
  *  10.09.2019 - v1.2 - Add button controls to change lock status
  *  10.09.2019 - v1.1b - Improve API call efficiency
  *  09.09.2019 - v1.1 - Added Keep Pet In option for Dual Scan devices
@@ -75,6 +76,12 @@ metadata {
         valueTile("updated_at", "device.updated_at", decoration: "flat", width: 3, height: 1) {
 			state "default", label: 'Updated at:\n${currentValue}'
 		}
+        valueTile("curfewStatus", "device.curfewStatus", decoration: "flat", width: 5, height: 1) {
+			state "default", label: '${currentValue}'
+		}
+        standardTile("empty", "device.empty", decoration: "flat", inactiveLabel: false, width: 1, height: 1) {
+			state "default", label: ''
+		}
         valueTile("battery", "device.battery", decoration: "flat", inactiveLabel: false, width: 2, height: 2) {
 			state "battery", label:'${currentValue}%\nbattery', unit:""
 		}
@@ -98,7 +105,7 @@ metadata {
 		}
         
 		main (["flap"])
-		details(["flap", "both", "in", "battery", "device_rssi", "out", "none",  "serial_number", "mac_address", "created_at", "updated_at", "network", "refresh"])
+		details(["flap", "curfewStatus", "empty", "both", "in", "battery", "device_rssi", "out", "none",  "serial_number", "mac_address", "created_at", "updated_at", "network", "refresh"])
 	}
 }
 
@@ -125,6 +132,13 @@ def poll() {
     sendEvent(name: "mac_address", value: flap.mac_address)
     sendEvent(name: "created_at", value: flap.created_at)
     sendEvent(name: "updated_at", value: flap.updated_at)
+    def curfewStatus
+    if (flap.control.curfew && !flap.control.curfew.isEmpty()) {
+    	curfewStatus = "A curfew is activated on this device between ${flap.control.curfew[0].lock_time} and ${flap.control.curfew[0].unlock_time}."
+    } else {
+    	curfewStatus = "A curfew is not enabled on this device."
+    }
+    sendEvent(name: "curfewStatus", value: curfewStatus)
     def lockMode
     switch (flap.status.locking.mode) {
     	case 0:
@@ -139,7 +153,7 @@ def poll() {
         default:
         	lockMode = "both"
 			break;
-        }
+    }
     if (lockMode == "none") {
     	 sendEvent(name: "lock", value: "unlocked")
     } else {
