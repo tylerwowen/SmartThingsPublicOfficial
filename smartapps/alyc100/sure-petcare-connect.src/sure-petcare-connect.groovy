@@ -417,19 +417,19 @@ def syncCurfewSettings(data) {
         body = [
     		curfew: curfewList
     	]
-        } else {
-            def curfew = [
-        		enabled: false,
-                lock_time: "${hhmm(settings["starting#$deviceId"])}",
-                unlock_time: "${hhmm(settings["ending#$deviceId"])}"
-        	]
-            def curfewList = []
-			curfewList.add(curfew)
-            body = [
-    			curfew: curfewList
-    		]
-        }
-		apiPUT("/api/device/" + deviceId + "/control", body)
+    } else {
+    	def curfew = [
+       		enabled: false,
+         	lock_time: "${hhmm(settings["starting#$deviceId"])}",
+            unlock_time: "${hhmm(settings["ending#$deviceId"])}"
+        ]
+        def curfewList = []
+		curfewList.add(curfew)
+        body = [
+    		curfew: curfewList
+    	]
+    }
+	apiPUT("/api/device/" + deviceId + "/control", body)
 }
 
 //Event Handler for Connect App
