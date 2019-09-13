@@ -396,7 +396,7 @@ def initialize() {
     			subscribe(childDevice, "lockMode", evtHandler, [filterEvents: false])
                 subscribe(childDevice, "network", evtHandler, [filterEvents: false])
     			//enable/disable curfew for pet door devices
-                runIn(1, syncCurfewSettings, [data: [deviceId: deviceId]])
+                runIn(1, syncCurfewSettings, [data: [deviceId: childDevice.deviceNetworkId]])
     		}
     	}
     }
