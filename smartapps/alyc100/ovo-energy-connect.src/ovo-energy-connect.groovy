@@ -37,6 +37,9 @@
  *
  *	01.06.2018
  *	v2.5 - OVO have stopped the live API. Update to remove unecessary polling.
+ *
+ *	28.10.2018
+ *	v3.0 - Support for new My OVO platform V2.
  */
 definition(
 		name: "OVO Energy (Connect)",
@@ -383,7 +386,7 @@ def devicesList() {
 
 def updateAccountDetails() {
 	logErrors([]) {
-		def resp = apiGET("https://paym.ovoenergy.com/api/paym/accounts")
+		def resp = apiGET("https://smartpaym.ovoenergy.com/api/customer-and-account-ids")
 		if (resp.status == 200) {
 			return resp.data[0]
 		} else {
@@ -414,7 +417,7 @@ def apiGET(path, body = [:]) {
 def getOVOAccessToken() {   
 	try {
     	def params = [
-			uri: 'https://my.ovoenergy.com/api/auth/login',
+			uri: 'https://my.ovoenergy.com/api/v2/auth/login',
         	contentType: 'application/json;charset=UTF-8',
         	headers: [
               'Accept': 'application/json, text/plain, */*',
@@ -424,6 +427,7 @@ def getOVOAccessToken() {
         	],
         	body: [
         		username: settings.username,
+                rememberMe: true,
                 password: settings.password,           
         	]
     	]
@@ -438,9 +442,9 @@ def getOVOAccessToken() {
 			log.debug "Adding cookie to collection: $cookie"
         	log.debug "auth: $response.data"
 			log.debug "cookie: $state.cookie"
-        	log.debug "sessionid: ${response.data.token}"
+        	log.debug "sessionid: ${response.data.userId}"
             
-            state.ovoAccessToken = response.data.token
+            state.ovoAccessToken = response.data.userId
         	// set the expiration to 5 minutes
 			state.ovoAccessToken_expires_at = new Date().getTime() + 600000
             state.loginerrors = null

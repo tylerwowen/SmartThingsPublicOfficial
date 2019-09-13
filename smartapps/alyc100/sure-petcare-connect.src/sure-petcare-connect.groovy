@@ -395,43 +395,35 @@ def initialize() {
     		if (childDevice.typeName == "Sure PetCare Pet Door Connect") {
     			subscribe(childDevice, "lockMode", evtHandler, [filterEvents: false])
                 subscribe(childDevice, "network", evtHandler, [filterEvents: false])
+    			//enable/disable curfew for pet door devices
+    			def deviceId = childDevice.deviceNetworkId
+                def body
+            	if (settings["curfewEnabled#$deviceId"]) {
+                	def curfew = [
+        				enabled: true,
+                    	lock_time: "${hhmm(settings["starting#$deviceId"])}",
+                    	unlock_time: "${hhmm(settings["ending#$deviceId"])}"
+        			]
+                	def curfewList = []
+					curfewList.add(curfew)
+            		body = [
+    					curfew: curfewList
+    				]
+            	} else {
+                	def curfew = [
+        				enabled: false,
+                    	lock_time: "${hhmm(settings["starting#$deviceId"])}",
+                    	unlock_time: "${hhmm(settings["ending#$deviceId"])}"
+        			]
+                	def curfewList = []
+					curfewList.add(curfew)
+            		body = [
+    					curfew: curfewList
+    				]
+            	}
+				apiPUT("/api/device/" + deviceId + "/control", body)
     		}
     	}
-    }
-    //enable/disable curfew for pet door devices
-    syncCurfewSettings()
-}
-
-def syncCurfewSettings() {
-	getChildDevices().each { childDevice -> 
-    	if (childDevice.typeName == "Sure PetCare Pet Door Connect") {
-        	def deviceId = childDevice.deviceNetworkId
-            if (settings["curfewEnabled#$deviceId"]) {
-                def curfew = [
-        			enabled: true,
-                    lock_time: "${hhmm(settings["starting#$deviceId"])}",
-                    unlock_time: "${hhmm(settings["ending#$deviceId"])}"
-        		]
-                def curfewList = []
-				curfewList.add(curfew)
-            	def body = [
-    				curfew: curfewList
-    			]
-				def resp = apiPUT("/api/device/" + childDevice.deviceNetworkId + "/control", body)
-            } else {
-                def curfew = [
-        			enabled: false,
-                    lock_time: "${hhmm(settings["starting#$deviceId"])}",
-                    unlock_time: "${hhmm(settings["ending#$deviceId"])}"
-        		]
-                def curfewList = []
-				curfewList.add(curfew)
-            	def body = [
-    				curfew: curfewList
-    			]
-				def resp = apiPUT("/api/device/" + childDevice.deviceNetworkId + "/control", body)
-            }
-        }
     }
 }
 
