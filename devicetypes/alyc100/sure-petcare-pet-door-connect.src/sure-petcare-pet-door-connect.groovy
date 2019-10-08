@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  08.10.2019 - v1.2.1b - Change lock behaviour to 'Pet In' rather than lock both ways
  *  13.09.2019 - v1.2.1 - Add curfew status tile
  *  10.09.2019 - v1.2 - Add button controls to change lock status
  *  10.09.2019 - v1.1b - Improve API call efficiency
@@ -45,8 +46,8 @@ metadata {
     	multiAttributeTile(name: "flap", width: 6, height: 4, type:"generic") {
 			tileAttribute("device.lockMode", key:"PRIMARY_CONTROL", canChangeBackground: true){
 				attributeState("both", label: 'LOCKED', action: "toggleLockMode", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-lock.png", backgroundColor: "#ef6d6a", nextState:"waiting")
-				attributeState("in", label: 'PETS OUT', action: "toggleLockMode", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-out.png", backgroundColor: "#f88e4c", nextState:"waiting")
-                attributeState("out", label: 'PETS IN', action: "toggleLockMode", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-in.png", backgroundColor: "#81cb65", nextState:"waiting")
+				attributeState("out", label: 'PETS OUT', action: "toggleLockMode", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-out.png", backgroundColor: "#f88e4c", nextState:"waiting")
+                attributeState("in", label: 'PETS IN', action: "toggleLockMode", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-in.png", backgroundColor: "#81cb65", nextState:"waiting")
 				attributeState("none", label: 'UNLOCKED', action: "toggleLockMode", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-unlock.png", backgroundColor: "#33a1ff", nextState:"waiting")
             	attributeState("waiting", label:'Please Wait...', backgroundColor:"#ffffff")
             }
@@ -55,11 +56,11 @@ metadata {
         standardTile("both", "device.switch", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false) {
 			state("default", action:"setLockModeToBoth", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-lock.png")
 		}
-        standardTile("in", "device.switch", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false) {
-			state("default", action:"setLockModeToIn", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-out.png")
-		}
         standardTile("out", "device.switch", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false) {
-			state("default", action:"setLockModeToOut", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-in.png")
+			state("default", action:"setLockModeToOut", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-out.png")
+		}
+        standardTile("in", "device.switch", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false) {
+			state("default", action:"setLockModeToIn", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-in.png")
 		}
         standardTile("none", "device.switch", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false) {
 			state("default", action:"setLockModeToNone", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/surepetcare-flap-unlock.png")
@@ -105,7 +106,7 @@ metadata {
 		}
         
 		main (["flap"])
-		details(["flap", "curfewStatus", "empty", "both", "in", "battery", "device_rssi", "out", "none",  "serial_number", "mac_address", "created_at", "updated_at", "network", "refresh"])
+		details(["flap", "curfewStatus", "empty", "both", "out", "battery", "device_rssi", "in", "none",  "serial_number", "mac_address", "created_at", "updated_at", "network", "refresh"])
 	}
 }
 
@@ -145,16 +146,16 @@ def poll() {
             lockMode = "none"
        		break;
         case 1:
-        	lockMode = "out"
+        	lockMode = "in"
             break;
         case 2:
-        	lockMode = "in"
+        	lockMode = "out"
             break;
         default:
         	lockMode = "both"
 			break;
     }
-    if (lockMode == "none") {
+    if (lockMode == "none" || lockMode == "out") {
     	 sendEvent(name: "lock", value: "unlocked")
     } else {
     	 sendEvent(name: "lock", value: "locked")
@@ -193,10 +194,10 @@ def setLockMode(mode) {
     	case "none":
             modeValue = 0
        		break;
-        case "out":
+        case "in":
         	modeValue = 1
             break;
-        case "in":
+        case "out":
         	modeValue = 2
             break;
         case "both":
@@ -216,7 +217,7 @@ def setLockMode(mode) {
 
 def lock() {
 	log.debug "Executing 'lock'"
-	setLockMode("both")
+	setLockMode("in")
 }
 
 def unlock() {
