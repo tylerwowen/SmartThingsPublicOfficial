@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  * 	VERSION HISTORY
+ *  08.10.2019 - v1.2b - Rename lock mode labels.
  *  13.09.2019 - v1.2 - Curfew option on PetCare doors
  *  10.09.2019 - v1.1b - Improve API call efficiency
  *  09.09.2019 - v1.1 - Added Keep Pet In option on Pet device for Dual Scan PetCare cat flaps
@@ -447,7 +448,7 @@ def evtHandler(evt) {
         	if (settings.sendPetIndoors) messageHandler(msg, false)  
         }
     } else if (evt.name == "lockMode") {
-    	msg = (evt.value == "both") ? "${evt.displayName} is locked." : "${evt.displayName} is unlocked."
+    	msg = (evt.value == "both" || evt.value == "in") ? "${evt.displayName} is locked." : "${evt.displayName} is unlocked."
         if (settings.sendPetDoorLock) messageHandler(msg, false)  
     } else if (evt.name == "network") {
     	msg = (evt.value == "Connected") ? "${evt.displayName} is online." : "${evt.displayName} is offline."
