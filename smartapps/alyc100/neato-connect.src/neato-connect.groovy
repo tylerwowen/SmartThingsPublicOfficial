@@ -1394,11 +1394,11 @@ def getApiEndpoint()         { return "https://apps.neatorobotics.com" }
 def getSmartThingsClientId() { return appSettings.clientId }
 def beehiveURL(path = '/') 	 { return "https://beehive.neatocloud.com${path}" }
 private def textVersion() {
-    def text = "Neato (Connect)\nVersion: 1.2.5\nDate: 05092019(1200)"
+    def text = "Neato (Connect)\nVersion: 1.2.6\nDate: 15102019(1500)"
 }
 
 private def textCopyright() {
-    def text = "Copyright © 2018 Alex Lee Yuk Cheung"
+    def text = "Copyright © 2016-2019 Alex Lee Yuk Cheung"
 }
 
 def clientId() {
