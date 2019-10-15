@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	05-09-2019:	1.2.6 - Option to delay cleaning if bin is full.
  *	05-09-2019:	1.2.5 - Handle new Long Secret Key format for future Neato Botvac firmware.
  *	28-06-2018:	1.2.4b - Bug fix. Stop nullPointerException on reschedule method.
  *	18-04-2018:	1.2.4 - Show restriction summary text in app when contact sensor restrictions are configured.
@@ -213,7 +214,7 @@ def smartSchedulePAGE(params) {
                     //Define when day should be mesaured
                     paragraph "[BETA] If enabled then a day is calculated from midnight before the last clean."
                     input ("ssIntervalFromMidnight#$botvacId", "bool", title: "Measure day interval from midnight before last clean?", required: false, defaultValue: false)
-                    
+                    input ("ssStopCleanBinFull#$botvacId", "bool", title: "Postpone cleaning if Botvac bin is full?", required: false, defaultValue: false)
                     //Define smart schedule trigger
                     input("ssScheduleTrigger#$botvacId", "enum", title: "How do you want to trigger the schedule?",  multiple: false, required: true, submitOnChange: true, options: ["mode": "Away Modes", "switch": "Switches", "presence": "Presence", "none": "No Triggers"])
         
@@ -1247,7 +1248,7 @@ def messageHandler(msg, forceFlag) {
 }
 
 private getAllOk(botvacId) {
-	getTriggerConditionsOk(botvacId) && getDaysOk(botvacId) && getTimeOk(botvacId) && getScheduleOk(botvacId) && getContactSensorsOk(botvacId)
+	getTriggerConditionsOk(botvacId) && getDaysOk(botvacId) && getTimeOk(botvacId) && getScheduleOk(botvacId) && getContactSensorsOk(botvacId) && getBinOK(botvacId)
 }
 
 private getScheduleOk(botvacId) {
@@ -1333,6 +1334,17 @@ private getContactSensorsOk(botvacId) {
     	}
     }
 	log.trace "contactSesnorsOk for $botvacId = $result"
+	result
+}
+
+private getBinOK(botvacId) {
+	def result = true
+    if (settings["ssStopCleanBinFull#$botvacId"]) {
+    	def botvacDevice = getChildDevice(botvacId)
+        def binState = botvacDevice.currentState("bin").getValue()
+        if (binState == "full") result = false
+    }
+	log.trace "binOK for $botvacId = $result"
 	result
 }
 
