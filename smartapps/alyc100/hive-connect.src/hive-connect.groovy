@@ -60,6 +60,9 @@
  *
  *	30.10.2017
  *	v3.0 - Support for Hive Active Light Colour Tuneable device.
+ *
+ *  4.10.2019
+ *  v3.1 - Support for Hive Radiator TRV
  */
 definition(
 		name: "Hive (Connect)",
@@ -138,7 +141,7 @@ def mainPage() {
 
 def headerSECTION() {
 	return paragraph (image: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/smartapps/alyc100/10457773_334250273417145_3395772416845089626_n.png",
-                  "Hive (Connect)\nVersion: 3.0\nDate: 30102017(1630)")
+                  "Hive (Connect)\nVersion: 3.1\nDate: 04112019(1630)")
 }
 
 def stateTokenPresent() {
@@ -902,10 +905,11 @@ def updateDevices() {
 	devices.each { device ->
         selectors.add("${device.id}")
         //Heating
-        if (device.type == "heating") {
+        if (device.type == "heating" || device.type == "trvcontrol") {
+        	def suffix = device.type == "heating" ? "Hive Heating" : "Hive TRV"
             //Heating Control
-            log.debug "Identified: ${device.state.name} Hive Heating"
-            def value = "${device.state.name} Hive Heating"
+            log.debug "Identified: ${device.state.name} ${suffix}"
+            def value = "${device.state.name} ${suffix}"
             def key = device.id
             state.hiveHeatingDevices["${key}"] = value
 
@@ -913,8 +917,8 @@ def updateDevices() {
                 def childDevice = getChildDevice("${device.id}")
                 if (childDevice) {
                     //Update name of device if different.
-                    if(childDevice.name != device.state.name + " Hive Heating") {
-                            childDevice.name = device.state.name + " Hive Heating"
+                    if(childDevice.name != device.state.name + " ${suffix}") {
+                            childDevice.name = device.state.name + " ${suffix}"
                             log.debug "Device's name has changed."
                     }
                 }
