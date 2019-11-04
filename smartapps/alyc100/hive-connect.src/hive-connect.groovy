@@ -910,11 +910,12 @@ def updateDevices() {
             //Heating Control
             log.debug "Identified: ${device.state.name} ${suffix}"
             def value = "${device.state.name} ${suffix}"
-            def key = device.id
+            def key = device.type + "/" + device.id
+	        selectors.add("${key}")
             state.hiveHeatingDevices["${key}"] = value
 
             //Update names of devices with Hive
-                def childDevice = getChildDevice("${device.id}")
+                def childDevice = getChildDevice("${key}")
                 if (childDevice) {
                     //Update name of device if different.
                     if(childDevice.name != device.state.name + " ${suffix}") {
@@ -1199,7 +1200,7 @@ def getDeviceStatus(id) {
 	def resp = apiGET("/products")
 	if (resp.status == 200) {
 		resp.data.eachWithIndex { currentDevice, i ->
-        	if(currentDevice.id == id) { 
+        	if(currentDevice.id == id || (currentDevice.type + "/" + currentDevice.id) == id) { 
                 retVal = resp.data[i]
             }
         }
