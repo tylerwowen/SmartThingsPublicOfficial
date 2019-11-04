@@ -257,7 +257,8 @@ def setHeatingSetpoint(temp) {
         		target: temp
         	]               
     	}
-    	def resp = parent.apiPOST("/nodes/heating/${device.deviceNetworkId}", args)    	
+        //def type = device.type;
+    	def resp = parent.apiPOST("/nodes/${device.deviceNetworkId}", args)    	
     }
     runIn(4, refresh)
 }
@@ -408,7 +409,7 @@ def setThermostatMode(mode) {
         	]
    		}
     
-    	def resp = parent.apiPOST("/nodes/heating/${device.deviceNetworkId}", args)
+    	def resp = parent.apiPOST("/nodes/${device.deviceNetworkId}", args)
 		mode = mode == 'range' ? 'auto' : mode    	
     }
     runIn(4, refresh)
@@ -445,6 +446,9 @@ def poll() {
         def temperature = currentDevice.props.temperature
         def heatingSetpoint = currentDevice.state.target as Double
         
+        log.debug "Got Temperature ${temperature} on device ${currentDevice.state.name}"
+        log.debug "Got Setpoint ${heatingSetpoint} on device ${currentDevice.state.name}"
+        
         //Check heating set point against maximum threshold value.
         log.debug "Maximum temperature threshold set to: " + getMaxTempThreshold()
         if ((getMaxTempThreshold() as BigDecimal) < (heatingSetpoint as BigDecimal))
@@ -456,7 +460,7 @@ def poll() {
         		target: getMaxTempThreshold()
             ]               
     
-    		parent.apiPOST("/nodes/heating/${device.deviceNetworkId}", args)   
+    		parent.apiPOST("/nodes/${device.deviceNetworkId}", args)   
             heatingSetpoint = String.format("%2.1f", getMaxTempThreshold())           
         }
         
@@ -481,7 +485,7 @@ def poll() {
         	def args = [
         		mode: "OFF"
             ]
-        	parent.apiPOST("/nodes/heating/${device.deviceNetworkId}", args)
+        	parent.apiPOST("/nodes/${device.deviceNetworkId}", args)
             mode = 'off'
         } 
         else if (mode == "boost") {
