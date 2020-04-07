@@ -1,7 +1,7 @@
 /**
  *  Neato (Connect)
  *
- *  Copyright 2016,2017,2018,2019 Alex Lee Yuk Cheung
+ *  Copyright 2016,2017,2018,2019,2020 Alex Lee Yuk Cheung
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	07-04-2020:	1.2.6b - Handle regularly changing secret key from Neato API.
  *	05-09-2019:	1.2.6 - Option to delay cleaning if bin is full.
  *	05-09-2019:	1.2.5 - Handle new Long Secret Key format for future Neato Botvac firmware.
  *	28-06-2018:	1.2.4b - Bug fix. Stop nullPointerException on reschedule method.
@@ -677,7 +678,6 @@ def addBotvacs() {
 				label: state.botvacDevices[device]
 			]
             childDevice = addChildDevice(app.namespace, "Neato Botvac Connected Series", device, null, data)
-            childDevice.setSecretKey(state.secretKeys[device])
             childDevice.refresh()
            
 			log.debug "Created ${state.botvacDevices[device]} with id: ${device}"
@@ -685,6 +685,10 @@ def addBotvacs() {
 			log.debug "found ${state.botvacDevices[device]} with id ${device} already exists"
 		}
 	}
+}
+
+def getSecretKey(deviceSerial) {
+	return state.secretKeys[deviceSerial]
 }
 
 private removeChildDevices(devices) {
@@ -1394,11 +1398,11 @@ def getApiEndpoint()         { return "https://apps.neatorobotics.com" }
 def getSmartThingsClientId() { return appSettings.clientId }
 def beehiveURL(path = '/') 	 { return "https://beehive.neatocloud.com${path}" }
 private def textVersion() {
-    def text = "Neato (Connect)\nVersion: 1.2.6\nDate: 15102019(1500)"
+    def text = "Neato (Connect)\nVersion: 1.2.6b\nDate: 07042020(2245)"
 }
 
 private def textCopyright() {
-    def text = "Copyright © 2016-2019 Alex Lee Yuk Cheung"
+    def text = "Copyright © 2016-2020 Alex Lee Yuk Cheung"
 }
 
 def clientId() {
