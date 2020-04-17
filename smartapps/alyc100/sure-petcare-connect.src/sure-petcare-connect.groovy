@@ -1,7 +1,7 @@
 /**
  *  Sure Petcare (Connect)
  *
- *  Copyright 2019 Alex Lee Yuk Cheung
+ *  Copyright 2020 Alex Lee Yuk Cheung
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  * 	VERSION HISTORY
+ *  17.04.2020 - v1.2c - Notification workaround based on change on ST platform. 
  *  08.10.2019 - v1.2b - Rename lock mode labels.
  *  13.09.2019 - v1.2 - Curfew option on PetCare doors
  *  10.09.2019 - v1.1b - Improve API call efficiency
@@ -435,24 +436,26 @@ def syncCurfewSettings(data) {
 
 //Event Handler for Connect App
 def evtHandler(evt) {
-	def msg
-    if (evt.name == "petInfo") {
-    	msg = evt.value
-        if (settings.sendPetLooked) messageHandler(msg, false)  
-    } else if (evt.name == "presence") {
-    	msg = (evt.value == "present") ? "${evt.displayName} has arrived." : "${evt.displayName} is leaving."
-        if (settings.sendPetPresence) messageHandler(msg, false)  
-    } else if (evt.name == "indoorsOnly") {
-    	if (evt.value != "empty") {
-    		msg = (evt.value == "true") ? "${evt.displayName} is set to indoors only." : "${evt.displayName} is allowed outdoors."
-        	if (settings.sendPetIndoors) messageHandler(msg, false)  
-        }
-    } else if (evt.name == "lockMode") {
-    	msg = (evt.value == "both" || evt.value == "in") ? "${evt.displayName} is locked." : "${evt.displayName} is unlocked."
-        if (settings.sendPetDoorLock) messageHandler(msg, false)  
-    } else if (evt.name == "network") {
-    	msg = (evt.value == "Connected") ? "${evt.displayName} is online." : "${evt.displayName} is offline."
-        if (settings.sendDoorConnection) messageHandler(msg, false)  
+    def msg
+    if (evt.isStateChange == 'true') {
+    	if (evt.name == "petInfo") {
+    		msg = evt.value
+        	if (settings.sendPetLooked) messageHandler(msg, false)  
+    	} else if (evt.name == "presence") {
+    		msg = (evt.value == "present") ? "${evt.displayName} has arrived." : "${evt.displayName} is leaving."
+        	if (settings.sendPetPresence) messageHandler(msg, false)  
+    	} else if (evt.name == "indoorsOnly") {
+    		if (evt.value != "empty") {
+    			msg = (evt.value == "true") ? "${evt.displayName} is set to indoors only." : "${evt.displayName} is allowed outdoors."
+        		if (settings.sendPetIndoors) messageHandler(msg, false)  
+        	}
+    	} else if (evt.name == "lockMode") {
+    		msg = (evt.value == "both" || evt.value == "in") ? "${evt.displayName} is locked." : "${evt.displayName} is unlocked."
+        	if (settings.sendPetDoorLock) messageHandler(msg, false)  
+    	} else if (evt.name == "network") {
+    		msg = (evt.value == "Connected") ? "${evt.displayName} is online." : "${evt.displayName} is offline."
+       		if (settings.sendDoorConnection) messageHandler(msg, false)  
+    	}
     }
 }
 
@@ -920,9 +923,9 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 
 
 private def textVersion() {
-    def text = "Sure PetCare (Connect)\nVersion: 1.2\nDate: 13092019(1600)"
+    def text = "Sure PetCare (Connect)\nVersion: 1.2c\nDate: 17042020(1200)"
 }
 
 private def textCopyright() {
-    def text = "Copyright © 2019 Alex Lee Yuk Cheung"
+    def text = "Copyright © 2020 Alex Lee Yuk Cheung"
 }

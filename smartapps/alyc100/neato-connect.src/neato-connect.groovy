@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *	17-04-2020: 1.2.6c - Notification workaround to fix issue caused by change in ST platform.
  *	07-04-2020:	1.2.6b - Handle regularly changing secret key from Neato API.
  *	05-09-2019:	1.2.6 - Option to delay cleaning if bin is full.
  *	05-09-2019:	1.2.5 - Handle new Long Secret Key format for future Neato Botvac firmware.
@@ -880,69 +881,71 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 def eventHandler(evt) {
 	log.debug "Executing 'eventHandler' for ${evt.displayName}"
 	def msg
-    if (evt.value == "paused") {
-    log.trace "Setting auto dock for ${evt.displayName}"
-    	//If configured, set to dock automatically after one minute.
-        if (settings.autoDock) {
-        	runIn(settings.autoDockDelay, scheduleAutoDock)
-        }
+    if (evt.isStateChange == 'true') {
+    	if (evt.value == "paused") {
+    		log.trace "Setting auto dock for ${evt.displayName}"
+    		//If configured, set to dock automatically after one minute.
+        	if (settings.autoDock) {
+        		runIn(settings.autoDockDelay, scheduleAutoDock)
+        	}
+    	}
+		else if (evt.value == "error") {
+    		unschedule(pollOn)
+        	unschedule(scheduleAutoDock)
+        	runEvery5Minutes('pollOn')
+			sendEvent(linkText:app.label, name:"${evt.displayName}", value:"error",descriptionText:"${evt.displayName} has an error", eventType:"SOLUTION_EVENT", displayed: true)
+			log.trace "${evt.displayName} has an error"
+			msg = "${evt.displayName} has an error: " + evt.device.latestState('statusMsg').stringValue.minus('HAS A PROBLEM - ')
+			if (settings.sendBotvacError) {
+        		messageHandler(msg, false)
+			}
+     	}
+	 	else if (evt.value == "cleaning") {
+     		unschedule(pollOn)
+        	unschedule(scheduleAutoDock)
+        	//Increase poll interval during cleaning
+        	schedule("0 0/1 * * * ?", pollOn)
+        	//Record last cleaning time for device
+        	log.debug "$evt.device.deviceNetworkId has started cleaning"
+        	if (settings["ssIntervalFromMidnight#$evt.device.deviceNetworkId"]) {
+        		state.lastClean[evt.device.deviceNetworkId] = (new Date()).clearTime().getTime()
+        	} else {
+        		state.lastClean[evt.device.deviceNetworkId] = now()
+        	}
+        	state.botvacOnTimeMarker[evt.device.deviceNetworkId] = now()
+        	log.debug "$evt.device.deviceNetworkId has started cleaning"
+        	if (settings.forceClean) { state.forceCleanNotificationSent[evt.device.deviceNetworkId] = false }
+        	//Remove SmartSchedule flag
+        	state.smartSchedule[evt.device.deviceNetworkId] = false
+			sendEvent(linkText:app.label, name:"${evt.displayName}", value:"on",descriptionText:"${evt.displayName} is on", eventType:"SOLUTION_EVENT", displayed: true)
+			msg = "${evt.displayName} is on"
+			if (settings.sendBotvacOn) {
+				messageHandler(msg, false)
+			}
+        	setSHMToStay()
+     	}
+	 	else if (evt.value == "full") {
+     		unschedule(pollOn)
+        	runEvery5Minutes('pollOn')
+			sendEvent(linkText:app.label, name:"${evt.displayName}", value:"bin full",descriptionText:"${evt.displayName} bin is full", eventType:"SOLUTION_EVENT", displayed: true)
+			log.trace "${evt.displayName} bin is full"
+			msg = "${evt.displayName} bin is full"
+			if (settings.sendBotvacBin) {
+				messageHandler(msg, false)
+			}
+	 	}
+     	else if (evt.value == "ready") {
+     		unschedule(pollOn)
+       	 	unschedule(scheduleAutoDock)
+        	runEvery5Minutes('pollOn')
+			sendEvent(linkText:app.label, name:"${evt.displayName}", value:"off",descriptionText:"${evt.displayName} is off", eventType:"SOLUTION_EVENT", displayed: true)
+			log.trace "${evt.displayName} is off"
+			msg = "${evt.displayName} is off"
+			if (settings.sendBotvacOff) {
+				messageHandler(msg, false)
+			}
+		}	
     }
-	else if (evt.value == "error") {
-    	unschedule(pollOn)
-        unschedule(scheduleAutoDock)
-        runEvery5Minutes('pollOn')
-		sendEvent(linkText:app.label, name:"${evt.displayName}", value:"error",descriptionText:"${evt.displayName} has an error", eventType:"SOLUTION_EVENT", displayed: true)
-		log.trace "${evt.displayName} has an error"
-		msg = "${evt.displayName} has an error: " + evt.device.latestState('statusMsg').stringValue.minus('HAS A PROBLEM - ')
-		if (settings.sendBotvacError) {
-        	messageHandler(msg, false)
-		}
-     }
-	 else if (evt.value == "cleaning") {
-     	unschedule(pollOn)
-        unschedule(scheduleAutoDock)
-        //Increase poll interval during cleaning
-        schedule("0 0/1 * * * ?", pollOn)
-        //Record last cleaning time for device
-        log.debug "$evt.device.deviceNetworkId has started cleaning"
-        if (settings["ssIntervalFromMidnight#$evt.device.deviceNetworkId"]) {
-        	state.lastClean[evt.device.deviceNetworkId] = (new Date()).clearTime().getTime()
-        } else {
-        	state.lastClean[evt.device.deviceNetworkId] = now()
-        }
-        state.botvacOnTimeMarker[evt.device.deviceNetworkId] = now()
-        log.debug "$evt.device.deviceNetworkId has started cleaning"
-        if (settings.forceClean) { state.forceCleanNotificationSent[evt.device.deviceNetworkId] = false }
-        //Remove SmartSchedule flag
-        state.smartSchedule[evt.device.deviceNetworkId] = false
-		sendEvent(linkText:app.label, name:"${evt.displayName}", value:"on",descriptionText:"${evt.displayName} is on", eventType:"SOLUTION_EVENT", displayed: true)
-		msg = "${evt.displayName} is on"
-		if (settings.sendBotvacOn) {
-			messageHandler(msg, false)
-		}
-        setSHMToStay()
-     }
-	 else if (evt.value == "full") {
-     	unschedule(pollOn)
-        runEvery5Minutes('pollOn')
-		sendEvent(linkText:app.label, name:"${evt.displayName}", value:"bin full",descriptionText:"${evt.displayName} bin is full", eventType:"SOLUTION_EVENT", displayed: true)
-		log.trace "${evt.displayName} bin is full"
-		msg = "${evt.displayName} bin is full"
-		if (settings.sendBotvacBin) {
-			messageHandler(msg, false)
-		}
-	 }
-     else if (evt.value == "ready") {
-     	unschedule(pollOn)
-        unschedule(scheduleAutoDock)
-        runEvery5Minutes('pollOn')
-		sendEvent(linkText:app.label, name:"${evt.displayName}", value:"off",descriptionText:"${evt.displayName} is off", eventType:"SOLUTION_EVENT", displayed: true)
-		log.trace "${evt.displayName} is off"
-		msg = "${evt.displayName} is off"
-		if (settings.sendBotvacOff) {
-			messageHandler(msg, false)
-		}
-	}
 }
 
 def timeHandler(evt) {
@@ -1398,7 +1401,7 @@ def getApiEndpoint()         { return "https://apps.neatorobotics.com" }
 def getSmartThingsClientId() { return appSettings.clientId }
 def beehiveURL(path = '/') 	 { return "https://beehive.neatocloud.com${path}" }
 private def textVersion() {
-    def text = "Neato (Connect)\nVersion: 1.2.6b\nDate: 07042020(2245)"
+    def text = "Neato (Connect)\nVersion: 1.2.6c\nDate: 17042020(1200)"
 }
 
 private def textCopyright() {
