@@ -63,6 +63,9 @@
  *
  *  4.10.2019
  *  v3.1 - Support for Hive Radiator TRV
+ *
+ *  2.10.2020
+ *  v3.1.1 - Support for change in authentication URL
  */
 definition(
 		name: "Hive (Connect)",
@@ -1250,7 +1253,7 @@ def apiPOST(path, body = [:]) {
 def getBeekeeperAccessToken() {
 	try {
     	def params = [
-			uri: apiBeekeeperURL('/global/login'),
+			uri: apiBeekeeperURL('/cognito/login'),
         	contentType: 'application/json',
         	headers: [
               'Content-Type': 'application/json'
