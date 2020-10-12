@@ -64,8 +64,8 @@
  *  4.10.2019
  *  v3.1 - Support for Hive Radiator TRV
  *
- *  2.10.2020
- *  v3.1.1 - Fix device suffix being set within deviceId
+ *  13.10.2020
+ *  v3.1.1b - Fix device suffix being set within deviceId
  */
 definition(
 		name: "Hive (Connect)",
