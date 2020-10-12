@@ -65,7 +65,7 @@
  *  v3.1 - Support for Hive Radiator TRV
  *
  *  2.10.2020
- *  v3.1.1 - Support for change in authentication URL
+ *  v3.1.1 - Fix device suffix being set within deviceId
  */
 definition(
 		name: "Hive (Connect)",
@@ -913,7 +913,7 @@ def updateDevices() {
             //Heating Control
             log.debug "Identified: ${device.state.name} ${suffix}"
             def value = "${device.state.name} ${suffix}"
-            def key = device.type + "/" + device.id
+            def key = device.id
 	        selectors.add("${key}")
             state.hiveHeatingDevices["${key}"] = value
 
