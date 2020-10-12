@@ -43,6 +43,9 @@
  *
  *	08.10.2017
  *	v3.1 - New Smartthing App compatability
+ *
+ *  12.10.2020
+ *	v3.2 - Update Hive API URL
  */
 preferences 
 {
@@ -258,7 +261,7 @@ def setHeatingSetpoint(temp) {
         	]               
     	}
         //def type = device.type;
-    	def resp = parent.apiPOST("/nodes/${device.deviceNetworkId}", args)    	
+    	def resp = parent.apiPOST("/nodes/heating/${device.deviceNetworkId}", args)    	
     }
     runIn(4, refresh)
 }
@@ -409,7 +412,7 @@ def setThermostatMode(mode) {
         	]
    		}
     
-    	def resp = parent.apiPOST("/nodes/${device.deviceNetworkId}", args)
+    	def resp = parent.apiPOST("/nodes/heating/${device.deviceNetworkId}", args)
 		mode = mode == 'range' ? 'auto' : mode    	
     }
     runIn(4, refresh)
@@ -460,7 +463,7 @@ def poll() {
         		target: getMaxTempThreshold()
             ]               
     
-    		parent.apiPOST("/nodes/${device.deviceNetworkId}", args)   
+    		parent.apiPOST("/nodes/heating/${device.deviceNetworkId}", args)   
             heatingSetpoint = String.format("%2.1f", getMaxTempThreshold())           
         }
         
@@ -485,7 +488,7 @@ def poll() {
         	def args = [
         		mode: "OFF"
             ]
-        	parent.apiPOST("/nodes/${device.deviceNetworkId}", args)
+        	parent.apiPOST("/nodes/heating/${device.deviceNetworkId}", args)
             mode = 'off'
         } 
         else if (mode == "boost") {
