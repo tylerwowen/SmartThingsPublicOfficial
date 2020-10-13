@@ -144,7 +144,7 @@ def mainPage() {
 
 def headerSECTION() {
 	return paragraph (image: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/smartapps/alyc100/10457773_334250273417145_3395772416845089626_n.png",
-                  "Hive (Connect)\nVersion: 3.1\nDate: 04112019(1630)")
+                  "Hive (Connect)\nVersion: v3.1.1b\nDate: 12102020(1130)")
 }
 
 def stateTokenPresent() {
