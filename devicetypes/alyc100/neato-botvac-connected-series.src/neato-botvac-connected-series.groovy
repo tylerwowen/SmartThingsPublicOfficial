@@ -13,6 +13,8 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *
+ *  13-10-2020: 1.14 - Move persistent map and turbo mode tiles to device settings.
  *	07-04-2020:	1.13b - Handle regularly changing secret key from Neato API.
  *  05-09-2019: 1.13 - Handle new Long Secret Key format for future Neato Botvac firmware.
  *  23-12-2018: 1.12b - Fix to better support future D3/D5 firmware updates.
@@ -65,6 +67,13 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.InvalidKeyException;
 
+preferences 
+{
+	input( "prefCleaningMode", "enum", options: ["turbo", "eco", "webcore"], title: "Cleaning Mode", description: "Only supported on certain models", required: true, defaultValue: "turbo" )
+    input( "prefNavigationMode", "enum", options: ["standard", "extraCare", "deep", "webcore"], title: "Navigation Mode", description: "Only supported on certain models", required: true, defaultValue: "standard" )
+    input( "prefPersistentMapMode", "enum", options: ["on", "off", "webcore"], title: "Use Persistent Map", description: "Only supported on certain models", required: false, defaultValue: false )
+}
+
 metadata {
 	definition (name: "Neato Botvac Connected Series", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.switch", mnmn: "SmartThings", vid: "generic-switch") {
     	capability "Battery"
@@ -79,9 +88,6 @@ metadata {
         command "enableSchedule"
         command "disableSchedule"
         command "resetSmartSchedule"
-        command "toggleCleaningMode"
-        command "toggleNavigationMode"
-        command "togglePersistentMapMode"
         command "setCleaningMode", ["string"]
         command "setNavigationMode", ["string"]
         command "setPersistentMapMode", ["string"]
@@ -168,27 +174,6 @@ metadata {
 			state("default", label:'reset schedule', action:"resetSmartSchedule", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/reset_schedule_icon.png")
 		}
         
-        standardTile("cleaningMode", "device.cleaningMode", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
-			state("turbo", label:'Turbo Mode', action:"toggleCleaningMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_turbo_icon.png")
-            state("eco", label:'Eco Mode', action:"toggleCleaningMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_eco_icon.png")
-            state("findMe", label:'Find Me', action:"findMe", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_findme_icon.png")
-            state("empty", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/empty.png")
-		}
-        
-        standardTile("navigationMode", "device.navigationMode", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
-			state("standard", label:'Standard', action:"toggleNavigationMode", icon:"st.Appliances.appliances13")
-            state("extraCare", label:'Extra Care', action:"toggleNavigationMode", icon:"st.Outdoor.outdoor1")
-            state("deep", label:'Deep', action:"toggleNavigationMode", icon:"st.Bath.bath13")
-            state("findMe", label:'Find Me', action:"findMe", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_findme_icon.png")
-            state("empty", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/empty.png")
-		}
-        
-        standardTile("persistentMapMode", "device.persistentMapMode", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
-			state("off", label:'Pers Map Off', action:"togglePersistentMapMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_floor_icon.png")
-            state("on", label:'Pers Map On', action:"togglePersistentMapMode", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/neato_floor_icon.png")
-            state("empty", icon:"https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/empty.png")
-		}
-        
         standardTile("switch", "device.switch", width: 2, height: 2, decoration: "flat") {
         	state("off", label: 'STOPPED', action: "switch.on", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/laser-guided-navigation.png", backgroundColor: "#ffffff", nextState:"on")
 			state("on", label: 'CLEANING', action: "switch.off", icon: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/devicetypes/alyc100/best-pet-hair-cleaning.png", backgroundColor: "#79b821", nextState:"off")
@@ -198,7 +183,7 @@ metadata {
         htmlTile(name:"mapHTML", action: "getMapHTML", width: 6, height: 9, whiteList: ["neatorobotics.s3.amazonaws.com", "raw.githubusercontent.com"])
         
 		main("switch")
-		details(["clean","smartScheduleStatusMessage", "forceCleanStatusMessage", "status", "battery", "charging", "bin", "dockStatus", "dockHasBeenSeen", "cleaningMode", "navigationMode", "persistentMapMode", "scheduled", "resetSmartSchedule", "network", "refresh", "mapHTML"])
+		details(["clean","smartScheduleStatusMessage", "forceCleanStatusMessage", "status", "battery", "charging", "bin", "dockStatus", "dockHasBeenSeen", "scheduled", "resetSmartSchedule", "network", "refresh", "mapHTML"])
 	}
 }
 
@@ -223,15 +208,12 @@ def updated() {
 def initialize() {
 	if (state.startCleaningMode == null) {
     	state.startCleaningMode = "turbo"
-        sendEvent(name: 'cleaningMode', value: state.startCleaningMode, displayed: true)
     }
     if (state.startNavigationMode == null) {
     	state.startNavigationMode = "standard"
-        sendEvent(name: 'navigationMode', value: state.startNavigationMode, displayed: true)
     }
     if (state.startPersistentMapMode == null) {
     	state.startPersistentMapMode = "off"
-        sendEvent(name: 'persistentMapMode', value: state.startPersistentMapMode, displayed: true)
     }
 	poll()
 }
@@ -313,46 +295,10 @@ def resetSmartSchedule() {
     runIn(2, refresh)
 }
 
-def toggleCleaningMode() {
-	log.debug "Executing 'toggleCleaningMode'"
-	if (state.startCleaningMode != null && state.startCleaningMode == "turbo") { 
-    	state.startCleaningMode = "eco"
-    } else {
-    	state.startCleaningMode = "turbo"
-    }
-    sendEvent(name: 'cleaningMode', value: state.startCleaningMode, displayed: true)
-    runIn(2, refresh)
-}
-
-def toggleNavigationMode() {
-	log.debug "Executing 'toggleNavigationMode'"
-	if (state.startNavigationMode != null && state.startNavigationMode == "standard") { 
-    	state.startNavigationMode = "extraCare"
-    } else if (state.startNavigationMode != null && state.startNavigationMode == "extraCare" && state.modelName == "BotVacD7Connected") {
-    	state.startNavigationMode = "deep"
-    } else {
-    	state.startNavigationMode = "standard"
-    }
-    sendEvent(name: 'navigationMode', value: state.startNavigationMode, displayed: true)
-    runIn(2, refresh)
-}
-
-def togglePersistentMapMode() {
-	log.debug "Executing 'togglePersistentMapMode'"
-	if (state.startPersistentMapMode != null && state.startPersistentMapMode == "on") { 
-    	state.startPersistentMapMode = "off"
-    } else {
-    	state.startPersistentMapMode = "on"
-    }
-    sendEvent(name: 'persistentMapMode', value: state.startPersistentMapMode, displayed: true)
-    runIn(2, refresh)
-}
-
 //Methods to support WebCORE mode set
 def setCleaningMode(mode) {
 	if ( mode == "eco" || mode == "turbo" ) {
     	state.startCleaningMode = mode
-    	sendEvent(name: 'cleaningMode', value: state.startCleaningMode, displayed: true)
     } else {
     	log.error("Unsupported cleaning mode: [${mode}]")
     }
@@ -361,7 +307,6 @@ def setCleaningMode(mode) {
 def setNavigationMode(mode) {
 	if ( mode == "deep" || mode == "extraCare" || mode == "standard") {
     	state.startNavigationMode = mode
-		sendEvent(name: 'navigationMode', value: state.startNavigationMode, displayed: true)
 	} else {
     	log.error("Unsupported navigation mode: [${mode}]")
     }
@@ -370,7 +315,6 @@ def setNavigationMode(mode) {
 def setPersistentMapMode(mode) {
 	if ( mode == "on" || mode == "off" ) {
     	state.startPersistentMapMode = mode
-		sendEvent(name: 'persistentMapMode', value: state.startPersistentMapMode, displayed: true)
 	} else {
     	log.error("Unsupported persistent map mode: [${mode}]")
     }
@@ -551,20 +495,19 @@ def poll() {
         //Tile configuration for models
         if (state.modelName == "BotVacD7Connected" || state.modelName == "BotVacD6Connected" || (state.modelName == "BotVacD5Connected" && isD3D5SupportedFirmwareVersion(state.firmware)) || state.modelName == "BotVacD4Connected" || (state.modelName == "BotVacD3Connected" && isD3D5SupportedFirmwareVersion(state.firmware)) ) {
         	//Neato Botvac D7, D6, D5 (firmware 4.3 and above), D4, D3 (firmware 4.3 and above)
-            sendEvent(name: 'persistentMapMode', value: state.startPersistentMapMode, displayed: true)
-            sendEvent(name: 'cleaningMode', value: state.startCleaningMode, displayed: true)
+            //Leave empty for future feature support
         } else if (state.modelName == "BotVacD5Connected") {
         	//Neato Botvac D5
-        	sendEvent(name: 'cleaningMode', value: "findMe", displayed: false)
-            sendEvent(name: 'persistentMapMode', value: "empty", displayed: false)
+            state.startCleaningMode = "unsupported"
+            state.startPersistentMapMode = "unsupported"
         } else if (state.modelName == "BotVacD3Connected") {
         	//Neato Botvac D3
-        	sendEvent(name: 'cleaningMode', value: "empty", displayed: false)
-            sendEvent(name: 'persistentMapMode', value: "empty", displayed: false)
+            state.startCleaningMode = "unsupported"
+            state.startPersistentMapMode = "unsupported"
         } else {
         	//Neato Botvac Connected
-            sendEvent(name: 'navigationMode', value: "empty", displayed: false)
-            sendEvent(name: 'persistentMapMode', value: "empty", displayed: false)
+            state.startNavigationMode = "unsupported"
+            state.startPersistentMapMode = "unsupported"
         }
         
         if (result.containsKey("details")) {
@@ -650,7 +593,7 @@ def refresh() {
 
 private def isTurboCleanMode() {
 	def result = true
-    if (state.startCleaningMode != null && state.startCleaningMode == "eco") {
+    if ((state.startCleaningMode == "unsupported") || (state.startCleaningMode != null && state.startCleaningMode == "eco" && settings.prefCleaningMode == "webcore") || (settings.prefCleaningMode == "eco")) {
     	result = false
     }
     result
@@ -658,7 +601,7 @@ private def isTurboCleanMode() {
 
 private def isExtraCareNavigationMode() {
 	def result = false
-    if (state.startNavigationMode != null && state.startNavigationMode == "extraCare") {
+    if ((state.startNavigationMode == "unsupported") || (state.startNavigationMode != null && state.startNavigationMode == "extraCare" && settings.prefCleaningMode == "webcore") || (settings.prefNavigationMode == "extraCare")) {
     	result = true
     }
     result
@@ -666,7 +609,7 @@ private def isExtraCareNavigationMode() {
 
 private def isDeepNavigationMode() {
 	def result = false
-    if (state.startNavigationMode != null && state.startNavigationMode == "deep") {
+    if ((state.startNavigationMode == "unsupported") || (state.startNavigationMode != null && state.startNavigationMode == "deep" && settings.prefCleaningMode == "webcore") || (settings.prefNavigationMode == "deep"))  {
     	result = true
     }
     result
@@ -674,7 +617,7 @@ private def isDeepNavigationMode() {
 
 private def isPersistentMapMode() {
 	def result = false
-    if (state.startPersistentMapMode != null && state.startPersistentMapMode == "on") {
+    if ((state.startPersistentMapMode == "unsupported") || (settings.prefPersistentMapMode == "on") || (state.startPersistentMapMode != null && state.startPersistentMapMode == "on")) {
     	result = true
     }
     result
