@@ -14,6 +14,7 @@
  *
  *  VERSION HISTORY
  *
+ *  19-10-2020: 1.14b - Update VID to device handler for battery status in new Smartthings app.
  *  13-10-2020: 1.14 - Move persistent map and turbo mode tiles to device settings.
  *	07-04-2020:	1.13b - Handle regularly changing secret key from Neato API.
  *  05-09-2019: 1.13 - Handle new Long Secret Key format for future Neato Botvac firmware.
@@ -75,7 +76,7 @@ preferences
 }
 
 metadata {
-	definition (name: "Neato Botvac Connected Series", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.switch", mnmn: "SmartThings", vid: "generic-switch") {
+	definition (name: "Neato Botvac Connected Series", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.robotcleaner", mnmm: "SmartThingsCommunity", vid: "3269e6ae-6525-31b5-a286-ed54fa56852d")	{
     	capability "Battery"
 		capability "Polling"
 		capability "Refresh"
