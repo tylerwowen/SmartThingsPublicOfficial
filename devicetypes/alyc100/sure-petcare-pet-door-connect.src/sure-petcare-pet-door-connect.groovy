@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  *  VERSION HISTORY
+ *  11.12.2019 - v1.2.2 - Thanks for @solarfusion, new battery calculations.
  *  08.10.2019 - v1.2.1b - Change lock behaviour to 'Pet In' rather than lock both ways
  *  13.09.2019 - v1.2.1 - Add curfew status tile
  *  10.09.2019 - v1.2 - Add button controls to change lock status
@@ -227,24 +228,23 @@ def unlock() {
 
 def getBatteryPercent(voltage) {
 	log.debug "Executing 'getBatteryPercent'"
-	def percentage
-	switch (voltage) {
-    	case voltage < 4:
-            percentage = 1
-       		break;
-        case voltage < 4.5:
-            percentage = 25
-       		break;
-        case voltage < 5:
-            percentage = 50
-       		break;
-        case voltage < 5.5:
-            percentage = 75
-       		break;
-        default:
-            percentage = 100
-       		break;
-    }
+	log.debug "Battery voltage " + voltage + " volts"
+	/* Battery voltages
+	6.27v = new batteries
+	5.2v = flap starts misbehaving i.e. batteries dead
+	0.27v increments for each 25% = 6.27, 6, 5.8, 5.5, 5.2
+	*/
+	def percentage = 100
+	if (voltage < 5.2) {
+    	percentage = 0
+	} else if (voltage < 5.5) {
+    	percentage = 25
+	} else if (voltage < 5.8) {
+    	percentage = 50
+	} else if (voltage < 6) {
+    	percentage = 75
+	}
+	return percentage
 }
 
 def refresh() {
