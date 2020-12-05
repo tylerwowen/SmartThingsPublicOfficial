@@ -66,6 +66,9 @@
  *
  *  13.10.2020
  *  v3.1.1b - Fix device suffix being set within deviceId
+ *
+ *  05.12.2020
+ *  v3.2 - Change authentication method to use Tokens generated from amazon-user-pool-srp-client
  */
 definition(
 		name: "Hive (Connect)",
@@ -95,6 +98,14 @@ preferences {
 def apiBeekeeperUKURL(path = '/') 			 { return "https://beekeeper-uk.hivehome.com:443/1.0${path}" }
 def apiBeekeeperURL(path = '/') 			 { return "https://beekeeper.hivehome.com:443/1.0${path}" }
 
+def initTokens() {
+	return [
+    	"token" : "Your token here from HiveTokens.js file",
+    	"refreshToken":"Your refreshToken here from HiveTokens.js",
+    	"accessToken":"Your accessToken here from HiveTokens.js"
+    ]
+}
+
 def startPage() {
 	if (parent) {
 		atomicState?.isParent = false
@@ -113,7 +124,7 @@ def mainPage() {
 		return dynamicPage(name: "mainPage", title: "", install: true, uninstall: true) {
 			section {
 				headerSECTION()
-				href("loginPAGE", title: null, description: authenticated() ? "Authenticated as " +username : "Tap to enter Hive credentials", state: authenticated())
+				href("loginPAGE", title: null, description: authenticated() ? "Authenticated as " + username + ". Tap to refresh authentication" : "Tap to refresh authentication", state: authenticated())
 			}
 		}
 	} else {
@@ -121,7 +132,7 @@ def mainPage() {
 		return dynamicPage(name: "mainPage", title: "", install: true, uninstall: true) {
 			section {
 				headerSECTION()
-				href("loginPAGE", title: "Authenticated as", description: authenticated() ? username : "Tap to enter Hive credentials", state: authenticated())
+				href("loginPAGE", title: "Authenticated as", description: authenticated() ? username + ". Tap to refresh authentication" : "Tap to refresh authentication", state: authenticated())
 			}
 			if (stateTokenPresent()) {
 				section ("Choose your devices:") {
@@ -144,15 +155,15 @@ def mainPage() {
 
 def headerSECTION() {
 	return paragraph (image: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/smartapps/alyc100/10457773_334250273417145_3395772416845089626_n.png",
-                  "Hive (Connect)\nVersion: v3.1.1b\nDate: 12102020(1130)")
+                  "Hive (Connect)\nVersion: v3.2\nDate: 05122020(1130)")
 }
 
 def stateTokenPresent() {
-	return state.beekeeperAccessToken != null && state.beekeeperAccessToken != ''
+	return state.beekeeperToken != null && state.beekeeperToken != ''
 }
 
 def authenticated() {
-	return (state.beekeeperAccessToken != null && state.beekeeperAccessToken != '') ? "complete" : null
+	return (state.beekeeperToken != null && state.beekeeperToken != '') ? "complete" : null
 }
 
 def devicesSelected() {
@@ -243,28 +254,20 @@ def loginPAGE() {
 	if (username == null || username == '' || password == null || password == '') {
 		return dynamicPage(name: "loginPAGE", title: "Login", uninstall: false, install: false) {
 			section { headerSECTION() }
-			section { paragraph "Enter your Hive credentials below to enable SmartThings and Hive integration." }
-			section("Hive Credentials:") {
-				input("username", "text", title: "Username", description: "Your Hive username (usually an email address)", required: true)
-				input("password", "password", title: "Password", description: "Your Hive password", required: true, submitOnChange: true)
-			}
+			section { paragraph "Please see Hive Active Smartthings community instructions to generate Tokens to paste into initTokens at line 101 in Hive(Connect) code." }
 		}
 	} else {
 		getBeekeeperAccessToken()
 		dynamicPage(name: "loginPAGE", title: "Login", uninstall: false, install: false) {
 			section { headerSECTION() }
-			section { paragraph "Enter your Hive credentials below to enable SmartThings and Hive integration." }
-			section("Hive Credentials:") {
-				input("username", "text", title: "Username", description: "Your Hive username (usually an email address)", required: true)
-				input("password", "password", title: "Password", description: "Your Hive password", required: true, submitOnChange: true)
-			}
+			section { paragraph "Please see Hive Active Smartthings community instructions to generate Tokens to paste into initTokens at line 101 in Hive(Connect) code." }
 			if (stateTokenPresent()) {
 				section {
-					paragraph "You have successfully connected to Hive. Click 'Done' to select your Hive devices."
+					paragraph "You have successfully connected to Hive. Click 'Next' to select your Hive devices."
 				}
 			} else {
 				section {
-					paragraph "There was a problem connecting to Hive. Check your user credentials and error logs in SmartThings web console.\n\n${state.loginerrors}"
+					paragraph "There was a problem connecting to Hive. Check your user token and error logs in SmartThings web console.\n\n${state.loginerrors}"
 				}
 			}
 		}
@@ -1252,18 +1255,18 @@ def apiPOST(path, body = [:]) {
 
 def getBeekeeperAccessToken() {
 	try {
-    	def params = [
-			uri: apiBeekeeperURL('/cognito/login'),
+    	def tokens
+        if (state.beekeeperToken) {
+        	tokens = [	"token": state.beekeeperToken,
+            			"refreshToken": state.beekeeperRefreshToken,
+                        "accessToken": state.beekeeperAccessToken ]
+        } else {
+        	tokens = initTokens()
+        }
+        def params = [
+			uri: apiBeekeeperURL('/cognito/refresh-token'),
         	contentType: 'application/json',
-        	headers: [
-              'Content-Type': 'application/json'
-        	],
-        	body: [
-        		username: settings.username,
-                password: settings.password,
-                devices: false,
-                products: false     	
-    		]
+            body: tokens
         ]
 
 		state.cookie = ''
@@ -1276,16 +1279,23 @@ def getBeekeeperAccessToken() {
 			log.debug "Adding cookie to collection: $cookie"
         	log.debug "auth: $response.data"
 			log.debug "cookie: $state.cookie"
-        	log.debug "sessionid: ${response.data.token}"
+        	log.debug "token: ${response.data.token}"
+        	log.debug "refreshToken: ${response.data.refreshToken}"
+        	log.debug "accessToken: ${response.data.accessToken}"
+            
 
-        	state.beekeeperAccessToken = response.data.token
+        	state.beekeeperToken = response.data.token
+            state.beekeeperRefreshToken = response.data.refreshToken
+            state.beekeeperAccessToken = response.data.accessToken
         	// set the expiration to 5 minutes
-			state.beekeeperAccessToken_expires_at = new Date().getTime() + 300000
+			state.beekeeperToken_expires_at = new Date().getTime() + 300000
             state.loginerrors = null
 		}
     } catch (groovyx.net.http.HttpResponseException e) {
-    	state.beekeeperAccessToken = null
-        state.beekeeperAccessToken_expires_at = null
+		state.remove("beekeeperToken")
+		state.remove("beekeeperRefreshToken")
+		state.remove("beekeeperAccessToken")
+		state.remove("beekeeperToken_expires_at")
    		state.loginerrors = "Error: ${e.response.status}: ${e.response.data}"
     	logResponse(e.response)
 		return e.response
@@ -1294,21 +1304,21 @@ def getBeekeeperAccessToken() {
 
 def apiRequestHeaders() {
 	return [
-        'authorization': "${state.beekeeperAccessToken}"
+        'authorization': "${state.beekeeperToken}"
     ]
 }
 
 def isLoggedIn() {
 	state.remove("hiveAccessToken")
 	log.debug "Calling isLoggedIn()"
-	log.debug "isLoggedIn state $state.beekeeperAccessToken"
-	if(!state.beekeeperAccessToken) {
-		log.debug "No state.beekeeperAccessToken"
+	log.debug "isLoggedIn state $state.beekeeperToken"
+	if(!state.beekeeperToken) {
+		log.debug "No state.beekeeperToken"
 		return false
 	}
 
 	def now = new Date().getTime()
-    return state.beekeeperAccessToken_expires_at > now
+    return state.beekeeperToken_expires_at > now
 }
 
 
@@ -1332,6 +1342,8 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 	} catch (groovyx.net.http.HttpResponseException e) {
 		log.error("got error: ${e}, body: ${e.getResponse().getData()}")
 		if (e.statusCode == 401) { // token is expired
+			state.remove("beekeeperToken")
+			state.remove("beekeeperRefreshToken")
 			state.remove("beekeeperAccessToken")
 			log.warn "Access token is not valid"
 		}
