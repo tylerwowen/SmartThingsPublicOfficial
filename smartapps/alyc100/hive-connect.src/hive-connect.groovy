@@ -69,6 +69,9 @@
  *
  *  05.12.2020
  *  v3.2 - Change authentication method to use Tokens generated from amazon-user-pool-srp-client
+ *
+ *  06.12.2020
+ *  v3.2a - Reduce token refresh frequency
  */
 definition(
 		name: "Hive (Connect)",
@@ -1288,14 +1291,16 @@ def getBeekeeperAccessToken() {
             state.beekeeperRefreshToken = response.data.refreshToken
             state.beekeeperAccessToken = response.data.accessToken
         	// set the expiration to 5 minutes
-			state.beekeeperToken_expires_at = new Date().getTime() + 300000
+			state.beekeeperToken_expires_at = new Date().getTime() + 1200000
             state.loginerrors = null
 		}
     } catch (groovyx.net.http.HttpResponseException e) {
-		state.remove("beekeeperToken")
-		state.remove("beekeeperRefreshToken")
-		state.remove("beekeeperAccessToken")
-		state.remove("beekeeperToken_expires_at")
+    	if (e.response.status == 401) {
+			state.remove("beekeeperToken")
+			state.remove("beekeeperRefreshToken")
+			state.remove("beekeeperAccessToken")
+			state.remove("beekeeperToken_expires_at")
+        }
    		state.loginerrors = "Error: ${e.response.status}: ${e.response.data}"
     	logResponse(e.response)
 		return e.response
