@@ -102,11 +102,8 @@ def apiBeekeeperUKURL(path = '/') 			 { return "https://beekeeper-uk.hivehome.co
 def apiBeekeeperURL(path = '/') 			 { return "https://beekeeper.hivehome.com:443/1.0${path}" }
 
 def initTokens() {
-	return [
-    	"token" : "Your token here from HiveTokens.js file",
-    	"refreshToken":"Your refreshToken here from HiveTokens.js",
-    	"accessToken":"Your accessToken here from HiveTokens.js"
-    ]
+	def hiveTokenString = 'PASTE HiveToken.json content into here'
+	return new groovy.json.JsonSlurper().parseText(hiveTokenString)
 }
 
 def startPage() {
