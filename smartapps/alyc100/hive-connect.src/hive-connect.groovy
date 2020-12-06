@@ -1350,6 +1350,7 @@ def logErrors(options = [errorReturn: null, logObject: log], Closure c) {
 			state.remove("beekeeperToken")
 			state.remove("beekeeperRefreshToken")
 			state.remove("beekeeperAccessToken")
+			state.remove("beekeeperToken_expires_at")
 			log.warn "Access token is not valid"
 		}
 		return options.errorReturn
