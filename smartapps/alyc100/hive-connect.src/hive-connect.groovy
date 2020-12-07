@@ -72,6 +72,7 @@
  *
  *  06.12.2020
  *  v3.2a - Reduce token refresh frequency
+ *  v3.2b - Add Bearer token on API call
  */
 definition(
 		name: "Hive (Connect)",
@@ -1287,7 +1288,7 @@ def getBeekeeperAccessToken() {
         	state.beekeeperToken = response.data.token
             state.beekeeperRefreshToken = response.data.refreshToken
             state.beekeeperAccessToken = response.data.accessToken
-        	// set the expiration to 5 minutes
+        	// set the expiration to 20 minutes
 			state.beekeeperToken_expires_at = new Date().getTime() + 1200000
             state.loginerrors = null
 		}
@@ -1306,7 +1307,7 @@ def getBeekeeperAccessToken() {
 
 def apiRequestHeaders() {
 	return [
-        'authorization': "${state.beekeeperToken}"
+        'Authorization': "Bearer ${state.beekeeperToken}"
     ]
 }
 
