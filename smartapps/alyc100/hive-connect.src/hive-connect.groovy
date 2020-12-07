@@ -1194,7 +1194,7 @@ def refreshDevices() {
 
 def devicesList() {
 	logErrors([]) {
-		resp = apiGET("/products")
+		def resp = apiGET("/products")
 		if (resp.status == 200) {
 			return resp.data
 		} else {
