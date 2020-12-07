@@ -62,7 +62,7 @@
  *	v3.0 - Support for Hive Active Light Colour Tuneable device.
  *
  *  4.10.2019
- *  v3.1 - Support for Hive Radiator TRV
+ *  v3.1 - Support for Hive Radiator TRV - Authors: Ben Lee
  *
  *  13.10.2020
  *  v3.1.1b - Fix device suffix being set within deviceId
@@ -73,6 +73,9 @@
  *  06.12.2020
  *  v3.2a - Reduce token refresh frequency
  *  v3.2b - Add Bearer token on API call
+ *
+ *  07.12.2020
+ *  v3.2c - Remove username and password references that are now redundant
  */
 definition(
 		name: "Hive (Connect)",
@@ -121,11 +124,11 @@ def startPage() {
 
 def mainPage() {
 	log.debug "mainPage"
-	if (username == null || username == '' || password == null || password == '') {
+	if (!state.beekeeperToken || state.beekeeperToken == '') {
 		return dynamicPage(name: "mainPage", title: "", install: true, uninstall: true) {
 			section {
 				headerSECTION()
-				href("loginPAGE", title: null, description: authenticated() ? "Authenticated as " + username + ". Tap to refresh authentication" : "Tap to refresh authentication", state: authenticated())
+				href("loginPAGE", title: null, description: authenticated() ? "AUTHENTICATED. Tap to refresh authentication" : "Tap to refresh authentication", state: authenticated())
 			}
 		}
 	} else {
@@ -133,7 +136,7 @@ def mainPage() {
 		return dynamicPage(name: "mainPage", title: "", install: true, uninstall: true) {
 			section {
 				headerSECTION()
-				href("loginPAGE", title: "Authenticated as", description: authenticated() ? username + ". Tap to refresh authentication" : "Tap to refresh authentication", state: authenticated())
+				href("loginPAGE", title: "Authentication", description: authenticated() ? "AUTHENTICATED. Tap to refresh authentication" : "Tap to refresh authentication", state: authenticated())
 			}
 			if (stateTokenPresent()) {
 				section ("Choose your devices:") {
@@ -147,7 +150,7 @@ def mainPage() {
 				}
 			} else {
 				section {
-					paragraph "There was a problem connecting to Hive. Check your user credentials and error logs in SmartThings web console.\n\n${state.loginerrors}"
+					paragraph "NOT AUTHENTICATED. There was a problem connecting to Hive. Check your generated token and error logs in SmartThings web console.\n\n${state.loginerrors}"
 				}
 			}
 		}
@@ -156,7 +159,7 @@ def mainPage() {
 
 def headerSECTION() {
 	return paragraph (image: "https://raw.githubusercontent.com/alyc100/SmartThingsPublic/master/smartapps/alyc100/10457773_334250273417145_3395772416845089626_n.png",
-                  "Hive (Connect)\nVersion: v3.2\nDate: 05122020(1130)")
+                  "Hive (Connect)\nVersion: v3.2c\nDate: 07122020(1500)")
 }
 
 def stateTokenPresent() {
@@ -252,23 +255,22 @@ def getPreferencesString() {
 }
 
 def loginPAGE() {
-	if (username == null || username == '' || password == null || password == '') {
+	getBeekeeperAccessToken()
+	if (!state.beekeeperToken || state.beekeeperToken == '') {
 		return dynamicPage(name: "loginPAGE", title: "Login", uninstall: false, install: false) {
 			section { headerSECTION() }
-			section { paragraph "Please see Hive Active Smartthings community instructions to generate Tokens to paste into initTokens at line 101 in Hive(Connect) code." }
+			section { paragraph "NOT AUTHENTICATED. There was a problem connecting to Hive. Check your generated token and error logs in SmartThings web console.\n\n${state.loginerrors}" }
 		}
 	} else {
-		getBeekeeperAccessToken()
 		dynamicPage(name: "loginPAGE", title: "Login", uninstall: false, install: false) {
 			section { headerSECTION() }
-			section { paragraph "Please see Hive Active Smartthings community instructions to generate Tokens to paste into initTokens at line 101 in Hive(Connect) code." }
 			if (stateTokenPresent()) {
 				section {
-					paragraph "You have successfully connected to Hive. Click 'Next' to select your Hive devices."
+					paragraph "AUTHENTICATED. You have successfully connected to Hive. Click 'Next' to go back to the main screen and choose your Hive devices."
 				}
 			} else {
 				section {
-					paragraph "There was a problem connecting to Hive. Check your user token and error logs in SmartThings web console.\n\n${state.loginerrors}"
+					paragraph "NOT AUTHENTICATED. There was a problem connecting to Hive. Check your generated token and error logs in SmartThings web console.\n\n${state.loginerrors}"
 				}
 			}
 		}
@@ -1192,7 +1194,7 @@ def refreshDevices() {
 
 def devicesList() {
 	logErrors([]) {
-		def resp = apiGET("/products")
+		resp = apiGET("/products")
 		if (resp.status == 200) {
 			return resp.data
 		} else {
@@ -1292,6 +1294,7 @@ def getBeekeeperAccessToken() {
 			state.beekeeperToken_expires_at = new Date().getTime() + 1200000
             state.loginerrors = null
 		}
+        
     } catch (groovyx.net.http.HttpResponseException e) {
     	if (e.response.status == 401) {
 			state.remove("beekeeperToken")
