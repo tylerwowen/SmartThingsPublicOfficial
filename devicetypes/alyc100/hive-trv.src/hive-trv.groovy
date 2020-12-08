@@ -1,7 +1,8 @@
 /**
- *  Hive Heating
+ *  Hive TRV
  *
- *  Copyright 2015 Alex Lee Yuk Cheung
+ *  Initial Copyright 2015 Alex Lee Yuk Cheung (Hive Thermostat DH)
+ * 	Modified for use wiht Hive TRV - Ben Lee @Bibbleq
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -14,52 +15,36 @@
  *
  *
  *  VERSION HISTORY
- *  25.02.2016
- *  v2.0 BETA - Initial Release
- *	v2.1 - Introducing button temperature control via improved thermostat multi attribute tile. More responsive temperature control. 
- *		   Improve Boost button behaviour and look.
- *	v2.1.1 - Tweaks to temperature control responsiveness
- *  v2.1.2 - Minor tweaks to main display
- *	v2.1.3 - Allow changing of boost interval amount in device settings.
- *  v2.1.4 - Allow changing of boost temperature in device settings.
- *	v2.1.5 - Option to disable Hive Heating Device for summer. Disable mode stops any automation commands from other smart apps reactivating Hive Heating.
- *	v2.1.5b - Bug fix when desired heat set point is null, control stops working.
- *  v2.1.5c - Fix multitile button behaviour that has changed since ST app 2.1.0. Add colour code to temperature reporting in activity feed.
- *	v2.1.5d - Fix blank temperature readings on Android ST app 
- *	v2.1.5e - Another attempt to fix blank temperature reading on Android.
- *	v2.1.5f - Allow decimal value for boost temperature. Changes to VALUE_CONTROL method to match latest ST docs.
- *	v2.1.5g - Changes to tile display for iOS app v2.1.2
  *
- *	10.09.2016
- *	v2.1.6 - Allow a maximum temperature threshold to be set.
- *	v2.1.6b - Added event for maximum temperature threshold breach.
+ *	31.10.2019
+ *	v1 based on Hive Heating DH code with modification for TRVs
+ *	
+ *	06.09.2019
+ * 	v1.1 display calibration information
  *
- *	30.05.2017
- *	v2.2 - Updated to use new Beekeeper API - Huge thanks to Tom Beech!
- *	v2.2b - Bug fix. Refresh bug prevents installation of Hive devices.
+ *	13.09.2019
+ *	v1.2 Updated to make more efficient (parent caches product information for 2 minutes)
  *
- *	30.10.2017
- *	v3.0 - Version refactor to reflect BeeKeeper API update.
+ *	18.09.2019
+ *	v1.3 Added refresh capabilities into DH instead of relying on parent SA (causes timeouts if too many TRVs)
  *
- *	08.10.2017
- *	v3.1 - New Smartthing App compatability
+ *	8.11.2019
+ *	v1.3.1 fixed typo
  *
- *  12.10.2020
- *	v3.2 - Update Hive API URL
- *
- *  08.12.2020
- *	v3.3 - Update UI for new SmartThings app
+ *  8.12.2020
+ *	v1.4 Update UI for new SmartThings app
  */
+ 
 preferences 
 {
-	input( "boostInterval", "number", title: "Boost Interval (minutes)", description: "Boost interval amount in minutes", required: false, defaultValue: 10 )
+	input( "boostInterval", "number", title: "Boost Interval (minutes)", description: "Boost interval amount in minutes", required: false, defaultValue: 60 )
     input( "boostTemp", "decimal", title: "Boost Temperature (°C)", description: "Boost interval amount in Centigrade", required: false, defaultValue: 22, range: "5..32" )
     input( "maxTempThreshold", "decimal", title: "Max Temperature Threshold (°C)", description: "Set the maximum temperature threshold in Centigrade", required: false, defaultValue: 32, range: "5..32" )
-	input( "disableDevice", "bool", title: "Disable Hive Heating?", required: false, defaultValue: false )
+	input( "disableDevice", "bool", title: "Disable Hive TRV?", required: false, defaultValue: false )
 }
 
 metadata {
-	definition (name: "Hive Heating", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.thermostat", mnmn: "fBZA", vid: "de5c3738-3ae6-38b7-adfd-bbd98cba41d1") {
+	definition (name: "Hive TRV", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.thermostat", mnmn: "fBZA", vid: "de5c3738-3ae6-38b7-adfd-bbd98cba41d1") {
 		capability "Actuator"
 		capability "Polling"
 		capability "Refresh"
@@ -69,6 +54,7 @@ metadata {
 		capability "Thermostat Mode"
 		capability "Thermostat Operating State"
         capability "Health Check"
+		capability "Battery"
         capability "tigerdrum36561.boostLabel"
         capability "tigerdrum36561.boostLength"
         
@@ -79,12 +65,14 @@ metadata {
         command "setThermostatMode"
         command "setHeatingSetpoint"
         command "setTemperatureForSlider"
+        command "boostButton"
 	}
 
 	simulator {
 		// TODO: define status and reply messages here
 	}
 }
+
 // parse events into attributes
 def parse(String description) {
 	log.debug "Parsing '${description}'"
@@ -124,7 +112,8 @@ def setHeatingSetpoint(temp) {
         def args
    		if (latestThermostatMode.stringValue == 'off') {
     		args = [
-        		mode: "SCHEDULE", target: temp
+        		mode: "MANUAL", 
+                target: temp
             ]
 		
     	} 
@@ -134,14 +123,14 @@ def setHeatingSetpoint(temp) {
         		target: temp
         	]               
     	}
-        //def type = device.type;
-    	def resp = parent.apiPOST("/nodes/heating/${device.deviceNetworkId}", args)    	
+    	def resp = parent.apiPOST("/nodes/trvcontrol/${device.deviceNetworkId}", args)    	
     }
     runIn(4, refresh)
 }
 
 def setBoostLength(minutes) {
 	log.debug "Executing 'setBoostLength with length $minutes minutes'"
+	//modified minimum boost to be 15 minutes as TRV can take 15 minutes to pick up new set points
     if (minutes < 5) {
 		minutes = 5
 	}
@@ -266,15 +255,14 @@ def setThermostatMode(mode) {
             ]
     	} else if (mode == 'heat') {
         	//mode": "MANUAL", "target": 20
-    		args = [
-        		mode: "MANUAL", 
+    		args = [ 
                 target: 20
             ]
     	} else if (mode == 'emergency heat') {  
     		if (state.boostLength == null || state.boostLength == '')
         	{
         		state.boostLength = 60
-            	sendEvent("name":"boostLength", "value": 60, "unit": "minutes", displayed: true)
+            	sendEvent("name":"boostLength", "value": 60, "unit": "minutes",  displayed: true)
         	}
     		//"mode": "BOOST","boost": 60,"target": 22
 			args = [
@@ -284,122 +272,149 @@ def setThermostatMode(mode) {
         	]
    		}
     
-    	def resp = parent.apiPOST("/nodes/heating/${device.deviceNetworkId}", args)
+    	def resp = parent.apiPOST("/nodes/trvcontrol/${device.deviceNetworkId}", args)
 		mode = mode == 'range' ? 'auto' : mode    	
     }
     runIn(4, refresh)
 }
 
+def setDeviceID() {
+	def DeviceID = parent.getDeviceID(device.deviceNetworkId)
+    state.DeviceID = DeviceID
+}
+
 def poll() {
-	log.debug "Executing 'poll'"
-	def currentDevice = parent.getDeviceStatus(device.deviceNetworkId)
+	log.debug "Executing 'poll' for $device.deviceNetworkId"
+	def currentDevice = parent.getDeviceTRVStatus(device.deviceNetworkId)
 	if (currentDevice == []) {
 		return []
 	}
-    log.debug "$device.name status: $currentDevice"
-        //Construct status message
-        def statusMsg = ""
-        
-        //Boost button label
-        if (state.boostLength == null || state.boostLength == '')
+    log.debug "${device.name} status: ${currentDevice}"
+	
+    if (state.DeviceID == null) {
+    	log.debug "Device ID Null"
+        setDeviceID()
+    }
+    
+    //Get Device info (Product & Device API requests return differnt sets of info)
+    def currentDeviceDetails = parent.getDeviceInfo(state.DeviceID)
+	//log.debug "${device.name} details: ${currentDeviceDetails}"
+	
+	//update battery
+	sendEvent("name": "battery", "value": currentDeviceDetails.props.battery, displayed: true)
+	//log.debug "Battery: ${currentDeviceDetails.props.battery}"
+	
+	//update signal
+	sendEvent("name": "signal", "value": currentDeviceDetails.props.signal, displayed: true)
+	//log.debug "Signal: ${currentDeviceDetails.props.signal}"
+    
+    //update calibration status
+    sendEvent("name": "calibrationstatus", "value": currentDeviceDetails.state.calibrationStatus, displayed: true)
+	//log.debug "Calibrationstatus: ${currentDeviceDetails.state.calibrationStatus}"
+
+    //update calibration timestamp
+    sendEvent("name": "calibrationtimestamp", "value": currentDeviceDetails.props.calibration, displayed: true)
+	//log.debug "Calibration Time: ${currentDeviceDetails.props.calibration}"
+    
+	//Construct status message
+	def statusMsg = ""
+	
+	//Boost button label
+	if (state.boostLength == null || state.boostLength == '')
         {
         	state.boostLength = 60
             sendEvent("name":"boostLength", "value": 60, "unit": "minutes", displayed: true)
         } else {
         	sendEvent("name":"boostLength", "value": state.boostLength, "unit": "minutes", displayed: true)
         }
-    	def boostLabel = "OFF"
-        
-        // get temperature status
-        def temperature = currentDevice.props.temperature
-        def heatingSetpoint = currentDevice.state.target as Double
-        
-        log.debug "Got Temperature ${temperature} on device ${currentDevice.state.name}"
-        log.debug "Got Setpoint ${heatingSetpoint} on device ${currentDevice.state.name}"
-        
-        //Check heating set point against maximum threshold value.
-        log.debug "Maximum temperature threshold set to: " + getMaxTempThreshold()
-        if ((getMaxTempThreshold() as BigDecimal) < (heatingSetpoint as BigDecimal))
-        {
-        	log.debug "Maximum temperature threshold exceeded. " + heatingSetpoint + " is higher than " + getMaxTempThreshold()
-            sendEvent(name: 'maxtempthresholdbreach', value: heatingSetpoint, unit: "C", displayed: false)
-        	//Force temperature threshold to Hive API.
-        	def args = [
-        		target: getMaxTempThreshold()
-            ]               
-    
-    		parent.apiPOST("/nodes/heating/${device.deviceNetworkId}", args)   
-            heatingSetpoint = String.format("%2.1f", getMaxTempThreshold())           
-        }
-        
-        // convert temperature reading of 1 degree to 7 as Hive app does
-        if (heatingSetpoint == "1.0") {
-        	heatingSetpoint = "7.0"
-        }
-        sendEvent(name: 'temperature', value: temperature, unit: "C", state: "heat")
-        sendEvent(name: 'heatingSetpoint', value: heatingSetpoint, unit: "C", state: "heat")
-        sendEvent(name: 'coolingSetpoint', value: heatingSetpoint, unit: "C", state: "heat")
-        sendEvent(name: 'thermostatSetpoint', value: heatingSetpoint, unit: "C", state: "heat", displayed: false)
-        sendEvent(name: 'thermostatFanMode', value: "off", displayed: false)
-        
-        state.desiredHeatSetpoint = heatingSetpoint
-        sendEvent("name":"desiredHeatSetpoint", "value": state.desiredHeatSetpoint, unit: "C", displayed: false)
-        
-        // determine hive operating mode
-        def mode = currentDevice.state.mode.toLowerCase()
-        
-        //If Hive heating device is set to disabled, then force off if not already off.
-        if (settings.disableDevice != null && settings.disableDevice == true && mode != "off") {
-        	def args = [
-        		mode: "OFF"
-            ]
-        	parent.apiPOST("/nodes/heating/${device.deviceNetworkId}", args)
-            mode = 'off'
-        } 
-        else if (mode == "boost") {
-        	mode = 'emergency heat'          
+	def boostLabel = "OFF"
+	
+	// get temperature status
+	def temperature = currentDevice.props.temperature
+	def heatingSetpoint = currentDevice.state.target as Double
+	
+	//Check heating set point against maximum threshold value.
+	log.debug "Maximum temperature threshold set to: " + getMaxTempThreshold()
+	if ((getMaxTempThreshold() as BigDecimal) < (heatingSetpoint as BigDecimal)) {
+		log.debug "Maximum temperature threshold exceeded. " + heatingSetpoint + " is higher than " + getMaxTempThreshold()
+		sendEvent(name: 'maxtempthresholdbreach', value: heatingSetpoint, unit: "C", displayed: false)
+		//Force temperature threshold to Hive API.
+		def args = [
+			target: getMaxTempThreshold()
+		]
+		parent.apiPOST("/nodes/trvcontrol/${device.deviceNetworkId}", args)   
+		heatingSetpoint = String.format("%2.1f", getMaxTempThreshold())           
+	}
+	
+	// convert temperature reading of 1 degree to 7 as Hive app does
+	if (heatingSetpoint == "1.0") {
+		heatingSetpoint = "7.0"
+	}
+	sendEvent(name: 'temperature', value: temperature, unit: "C", state: "heat")
+	sendEvent(name: 'heatingSetpoint', value: heatingSetpoint, unit: "C", state: "heat")
+	//sendEvent(name: 'coolingSetpoint', value: heatingSetpoint, unit: "C", state: "heat")
+	sendEvent(name: 'thermostatSetpoint', value: heatingSetpoint, unit: "C", state: "heat", displayed: false)
+	//sendEvent(name: 'thermostatFanMode', value: "off", displayed: false)
+	
+	state.desiredHeatSetpoint = heatingSetpoint
+	sendEvent("name":"desiredHeatSetpoint", "value": state.desiredHeatSetpoint, unit: "C", displayed: false)
+	
+	// determine hive operating mode
+	def mode = currentDevice.state.mode.toLowerCase()
+	
+	//If Hive heating device is set to disabled, then force off if not already off.
+	if (settings.disableDevice != null && settings.disableDevice == true && mode != "off") {
+		def args = [
+			mode: "OFF"
+		]
+		parent.apiPOST("/nodes/trvcontrol/${device.deviceNetworkId}", args)
+		mode = 'off'
+	}
+	
+    switch (mode) {
+        case "boost":
+            mode = 'emergency heat'          
             def boostTime = currentDevice.state.boost
             statusMsg = "Boost " + boostTime + "min"
             boostLabel = boostTime + "min remaining"
             sendEvent("name":"boostTimeRemaining", "value": boostTime + " mins")
-        }
-        else if (mode == "manual") {
-        	mode = 'heat'
+        case "manual":
+            mode = 'heat'
             statusMsg = statusMsg + " Manual"
-        }
-        else if (mode == "off") {
-        	mode = 'off'
-            statusMsg = statusMsg + " Off"
-        }
-        else {
-        	mode = 'auto'
-        	statusMsg = statusMsg + " Schedule"
-        }
-        
-        if (settings.disableDevice != null && settings.disableDevice == true) {
-        	statusMsg = "DISABLED"
-        }
-        
-        sendEvent(name: 'thermostatMode', value: mode) 
-        
-        // determine if Hive heating relay is on
-        def stateHeatingRelay = (heatingSetpoint as BigDecimal) > (temperature as BigDecimal)
-        
-        log.debug "stateHeatingRelay: $stateHeatingRelay"
-        
-        if (stateHeatingRelay) {
-        	sendEvent(name: 'thermostatOperatingState', value: "heating")
-        }       
-        else {
-        	sendEvent(name: 'thermostatOperatingState', value: "idle")
-        }  
-               
-        sendEvent("name":"hiveHeating", "value": statusMsg, displayed: false)  
-        sendEvent("name":"boostLabel", "value": boostLabel, displayed: false)
-     
+        case "auto":
+            statusMsg = statusMsg + " Schedule"
+        default:
+        	log.debug "default"
+    }
+	
+	if (settings.disableDevice != null && settings.disableDevice == true) {
+		statusMsg = "DISABLED"
+	}
+	
+	sendEvent(name: 'thermostatMode', value: mode) 
+	
+	// determine if Hive heating relay is on
+	def stateHeatingRelay = (heatingSetpoint as BigDecimal) > (temperature as BigDecimal)
+	
+	//log.debug "stateHeatingRelay: $stateHeatingRelay"
+	//log.debug "Working status: ${currentDevice.props.working}"
+	
+	if (stateHeatingRelay && currentDevice.props.working.toBoolean() == true) {
+		//log.debug "heating"
+		sendEvent(name: 'thermostatOperatingState', value: "heating")
+	}       
+	else {
+		//log.debug "idle"
+		sendEvent(name: 'thermostatOperatingState', value: "idle")
+	}  
+
+	sendEvent("name":"hiveHeating", "value": statusMsg, displayed: false)  
+	sendEvent("name":"boostLabel", "value": boostLabel, displayed: false)
+
 }
 
 def refresh() {
 	log.debug "Executing 'refresh'"
-	poll()
+	unschedule('poll')
+	runEvery5Minutes('poll')
 }

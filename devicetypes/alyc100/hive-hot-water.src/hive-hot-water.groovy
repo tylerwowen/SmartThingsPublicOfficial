@@ -29,82 +29,28 @@
  *
  *	  08.10.2018
  *	  v3.1 - First attempt at New Smartthings App compatibility.
+ *
+ *	  08.12.2020
+ *	  v3.1 - New Smartthings App UI.
  */
 
 metadata {
-	definition (name: "Hive Hot Water", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.thermostat", mnmn: "SmartThings", vid: "SmartThings-smartthings-Z-Wave_Thermostat") {
+	definition (name: "Hive Hot Water", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.thermostat", mnmn: "fBZA", vid: "e1ac13ba-6325-3cd8-8908-46b6ab04a313") {
 		capability "Actuator"
 		capability "Polling"
 		capability "Refresh"
         capability "Thermostat"
 		capability "Thermostat Mode"
+		capability "Thermostat Operating State"
         capability "Health Check"
+        capability "tigerdrum36561.boostLabel"
+        capability "tigerdrum36561.boostLength"
         
         command "setThermostatMode"
-        command "setBoostLength"
 	}
 
 	simulator {
 		// TODO: define status and reply messages here
-	}
-
-	tiles(scale: 2) {
-
-		multiAttributeTile(name: "hotWaterRelay", width: 6, height: 4, type:"lighting") {
-			tileAttribute("device.thermostatOperatingState", key:"PRIMARY_CONTROL"){
-				attributeState "heating", icon: "st.thermostat.heat", backgroundColor: "#EC6E05"
-  				attributeState "idle", icon: "st.thermostat.heating-cooling-off", backgroundColor: "#bbbbbb"
-            }
-            tileAttribute ("hiveHotWater", key: "SECONDARY_CONTROL") {
-				attributeState "hiveHotWater", label:'${currentValue}'
-			}
-		}
-        
-        standardTile("hotWaterRelay_main", "device.thermostatOperatingState", inactiveLabel: true, width: 3, height: 3) {
-			state( "heating", label:'${currentValue}', icon: "st.Bath.bath6", backgroundColor: "#EC6E05")
-  			state( "idle", label:'${currentValue}', icon: "st.Bath.bath6", backgroundColor: "#ffffff")
-		}
-        
-        standardTile("hotWaterRelay_small", "device.thermostatOperatingState", inactiveLabel: true, width: 3, height: 3) {
-			state( "heating", icon: "st.thermostat.heat", backgroundColor: "#EC6E05")
-  			state( "idle", icon: "st.thermostat.heating-cooling-off", backgroundColor: "#ffffff")
-		}
-
-        standardTile("thermostatMode", "device.thermostatMode", inactiveLabel: false, decoration: "flat", width: 3, height: 3) {
-			state("auto", label: "SCHEDULED", action:"heat", icon:"st.Bath.bath6")
-			state("off", label: "OFF", action:"auto", icon:"st.Bath.bath6")
-			state("heat", label: "ON", action:"off", icon:"st.Bath.bath6")
-			state("emergency heat", label: "BOOST", action:"auto", icon:"st.Bath.bath6")
-		}
-        
-
-		standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-			state("default", label:'refresh', action:"polling.poll", icon:"st.secondary.refresh-icon")
-		}
-        
-        valueTile("boost", "device.boostLabel", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-			state("default", label:'${currentValue}', action:"emergencyHeat")
-		}
-        
-        controlTile("boostSliderControl", "device.boostLength", "slider", height: 2, width: 4, inactiveLabel: false, range:"(10..240)") {
-			state "setBoostLength", label:'Set boost length to', action:"setBoostLength"
-		}
-        
-        standardTile("mode_auto", "device.mode_auto", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-        	state "default", action:"auto", label:'Schedule', icon:"st.Office.office7"
-    	}
-        
-        standardTile("mode_manual", "device.mode_manual", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-        	state "default", action:"heat", label:'On', icon:"st.Weather.weather2"
-   	 	}
-        
-        standardTile("mode_off", "device.mode_off", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-        	state "default", action:"off", icon:"st.thermostat.heating-cooling-off"
-   	 	}
-
-		main(["hotWaterRelay_main"])	
-		details(["hotWaterRelay", "mode_auto", "mode_manual", "mode_off", "boost", "boostSliderControl", "refresh"])
-
 	}
 }
 
@@ -134,14 +80,13 @@ def setHeatingSetpoint(temp) {
 
 def setBoostLength(minutes) {
 	log.debug "Executing 'setBoostLength with length $minutes minutes'"
-    if (minutes < 10) {
-		minutes = 10
+    if (minutes < 5) {
+		minutes = 5
 	}
-	if (minutes > 240) {
-		minutes = 240
+	if (minutes > 300) {
+		minutes = 300
 	}
-    state.boostLength = minutes
-    sendEvent("name":"boostLength", "value": state.boostLength, displayed: true)
+    sendEvent("name":"boostLength", "value": minutes, "units":"minutes", displayed: true)
     
     def latestThermostatMode = device.latestState('thermostatMode')
     
@@ -213,7 +158,7 @@ def setThermostatMode(mode) {
     	if (state.boostLength == null || state.boostLength == '')
         {
         	state.boostLength = 60
-            sendEvent("name":"boostLength", "value": 60, displayed: true)
+            sendEvent("name":"boostLength", "value": 60, "units":"minutes", displayed: true)
         }
     	args = [
             mode: "BOOST",
@@ -247,9 +192,11 @@ def poll() {
         if (state.boostLength == null || state.boostLength == '')
         {
         	state.boostLength = 60
-            sendEvent("name":"boostLength", "value": 60, displayed: true)
+            sendEvent("name":"boostLength", "value": 60, "unit": "minutes", displayed: true)
+        } else {
+        	sendEvent("name":"boostLength", "value": state.boostLength, "unit": "minutes", displayed: true)
         }
-    	def boostLabel = "Start\n$state.boostLength Min Boost"
+    	def boostLabel = "OFF"
         
         // determine hive hot water operating mode
         def mode = currentDevice.state.mode.toLowerCase()
@@ -261,7 +208,7 @@ def poll() {
         	mode = 'emergency heat'
             statusMsg = statusMsg + " set to BOOST"
             def boostTime = currentDevice.state.boost
-            boostLabel = "Boosting for \n" + boostTime + " mins"
+            boostLabel = boostTime + "min remaining"
             sendEvent("name":"boostTimeRemaining", "value": boostTime + " mins")
         }
         else if (mode == "manual") {
