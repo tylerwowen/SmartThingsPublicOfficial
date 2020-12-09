@@ -54,6 +54,7 @@ metadata {
         command "boostButton"
         command "boostTimeUp"
 		command "boostTimeDown"
+		command "setBoostLength"
 	}
 
 	simulator {
@@ -234,6 +235,7 @@ def setBoostLength(minutes) {
 	if (minutes > 300) {
 		minutes = 300
 	}
+    state.boostLength = minutes
     sendEvent("name":"boostLength", "value": state.boostLength, "unit":"minutes", displayed: true)
 }
 
@@ -302,14 +304,7 @@ def poll() {
     modeMsg = "Mode: " + mode.toUpperCase() + "."
     
  	//Boost button label
-        if (state.boostLength == null || state.boostLength == '')
-        {
-        	state.boostLength = 60
-            sendEvent("name":"boostLength", "value": 60, "unit":"minutes", displayed: true)
-        } else {
-        	sendEvent("name":"boostLength", "value": state.boostLength, "unit":"minutes", displayed: true)
-        }
-    	def boostLabel = "OFF"
+    def boostLabel = "OFF"
     
     //If Warmup heating device is set to disabled, then force off if not already off.
     if (settings.disableDevice != null && settings.disableDevice == true && activeHeatCoolMode != "OFF") {
