@@ -50,6 +50,7 @@
  *  08.12.2020
  *	v3.3 - Update UI for new SmartThings app
  *	v3.3a - Add missing set boost length command for WebCore.
+ *	v3.3b - Tweak to boost length command.
  */
 preferences 
 {
@@ -150,6 +151,7 @@ def setBoostLength(minutes) {
 	if (minutes > 300) {
 		minutes = 300
 	}
+    state.boostLength = minutes
     sendEvent("name":"boostLength", "value": minutes, "unit": "minutes", displayed: true)
 }
 
@@ -303,13 +305,6 @@ def poll() {
         def statusMsg = ""
         
         //Boost button label
-        if (state.boostLength == null || state.boostLength == '')
-        {
-        	state.boostLength = 60
-            sendEvent("name":"boostLength", "value": 60, "unit": "minutes", displayed: true)
-        } else {
-        	sendEvent("name":"boostLength", "value": state.boostLength, "unit": "minutes", displayed: true)
-        }
     	def boostLabel = "OFF"
         
         // get temperature status
@@ -361,8 +356,8 @@ def poll() {
         else if (mode == "boost") {
         	mode = 'emergency heat'          
             def boostTime = currentDevice.state.boost
-            statusMsg = "Boost " + boostTime + "min"
-            boostLabel = boostTime + "min remaining"
+            statusMsg = "Boost " + boostTime + " min"
+            boostLabel = boostTime + " min remaining"
             sendEvent("name":"boostTimeRemaining", "value": boostTime + " mins")
         }
         else if (mode == "manual") {

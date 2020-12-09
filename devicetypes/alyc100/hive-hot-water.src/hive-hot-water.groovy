@@ -33,6 +33,7 @@
  *	  08.12.2020
  *	  v3.1 - New Smartthings App UI.
  *	  v3.1a - Add missing set boost length command for WebCore.
+ *	  v3.1b - Tweak to boost length command.
  */
 
 metadata {
@@ -88,17 +89,10 @@ def setBoostLength(minutes) {
 	if (minutes > 300) {
 		minutes = 300
 	}
+    state.boostLength = minutes
     sendEvent("name":"boostLength", "value": minutes, "units":"minutes", displayed: true)
     
     def latestThermostatMode = device.latestState('thermostatMode')
-    
-    //If already in BOOST mode, send updated boost length to Hive.
-	if (latestThermostatMode.stringValue == 'emergency heat') {
-		setThermostatMode('emergency heat')
-    }
-    else {
-    	refresh()
-    }
 }
 
 def heatingSetpointUp(){
@@ -191,13 +185,6 @@ def poll() {
         def statusMsg = "Currently"
         
         //Boost button label
-        if (state.boostLength == null || state.boostLength == '')
-        {
-        	state.boostLength = 60
-            sendEvent("name":"boostLength", "value": 60, "unit": "minutes", displayed: true)
-        } else {
-        	sendEvent("name":"boostLength", "value": state.boostLength, "unit": "minutes", displayed: true)
-        }
     	def boostLabel = "OFF"
         
         // determine hive hot water operating mode
@@ -210,7 +197,7 @@ def poll() {
         	mode = 'emergency heat'
             statusMsg = statusMsg + " set to BOOST"
             def boostTime = currentDevice.state.boost
-            boostLabel = boostTime + "min remaining"
+            boostLabel = boostTime + " min remaining"
             sendEvent("name":"boostTimeRemaining", "value": boostTime + " mins")
         }
         else if (mode == "manual") {
