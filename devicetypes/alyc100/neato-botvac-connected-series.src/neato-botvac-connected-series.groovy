@@ -14,6 +14,7 @@
  *
  *  VERSION HISTORY
  *
+ *  09-12-2020: 1.15 - New Smartthings UI. Thanks to @cscheiene for the work.
  *  19-10-2020: 1.14b - Update VID to device handler for battery status in new Smartthings app.
  *  13-10-2020: 1.14 - Move persistent map and turbo mode tiles to device settings.
  *	07-04-2020:	1.13b - Handle regularly changing secret key from Neato API.
@@ -76,13 +77,19 @@ preferences
 }
 
 metadata {
-	definition (name: "Neato Botvac Connected Series", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.robotcleaner", mnmm: "SmartThingsCommunity", vid: "3269e6ae-6525-31b5-a286-ed54fa56852d")	{
+	definition (name: "Neato Botvac Connected Series", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.robotcleaner", mnmn: "SmartThingsCommunity", vid: "1b47ad78-269e-3c5c-a1a9-8c84d2a2ef05")	{
     	capability "Battery"
 		capability "Polling"
 		capability "Refresh"
 		capability "Switch"
         capability "Actuator"
         capability "Health Check"
+        capability "islandtravel33177.neatoBin"
+        capability "islandtravel33177.neatoNetwork"
+        capability "islandtravel33177.neatoStatus"
+        capability "islandtravel33177.neatoDockStatus"
+        capability "islandtravel33177.neatoCharging"
+        capability "islandtravel33177.neatoStatusMsg"
         
 		command "refresh"
         command "dock"
