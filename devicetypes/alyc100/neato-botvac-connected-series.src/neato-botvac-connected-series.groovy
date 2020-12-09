@@ -101,12 +101,7 @@ metadata {
         command "setPersistentMapMode", ["string"]
         command "setSecretKey", ["string"]
         command "findMe"
-
-		attribute "network","string"
-		attribute "bin","string"
-        attribute "status","string"
 	}
-
 
 	simulator {
 		// TODO: define status and reply messages here
