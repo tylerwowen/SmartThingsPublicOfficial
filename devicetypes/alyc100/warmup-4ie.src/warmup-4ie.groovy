@@ -14,6 +14,7 @@
  *
  *
  *	VERSION HISTORY
+ *	09.12.2020 	v1.0 - New SmartThings App UI.
  *	08.10.2018 	v1.0 BETA Release 5 - Compatibility for New Smartthings App.
  *	10.12.2017 	v1.0 BETA Release 4 - Fix to boost functionality when thermostat is off.
  *	10.12.2017 	v1.0 BETA Release 3 - Add boost functionality.
@@ -30,16 +31,19 @@ preferences
 }
 
 metadata {
-	definition (name: "Warmup 4IE", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.thermostat", mnmn: "SmartThings", vid: "SmartThings-smartthings-Z-Wave_Thermostat") {
+	definition (name: "Warmup 4IE", namespace: "alyc100", author: "Alex Lee Yuk Cheung", ocfDeviceType: "oic.d.thermostat", mnmn: "fBZA", vid: "36a9d325-53b2-37e8-9376-ee404ac3259d") {
 		capability "Actuator"
 		capability "Polling"
-		capability "Refresh"
-		capability "Temperature Measurement"
+		capability "Refresh"		
+        capability "Temperature Measurement"
         capability "Thermostat"
-        capability "Thermostat Mode"
 		capability "Thermostat Heating Setpoint"
-		capability "Switch"
+		capability "Thermostat Mode"
+		capability "Thermostat Operating State"
         capability "Health Check"
+        capability "tigerdrum36561.boostLabel"
+        capability "tigerdrum36561.boostLength"
+        capability "tigerdrum36561.airTemperatureMeasurement"
         
         command "heatingSetpointUp"
 		command "heatingSetpointDown"
@@ -47,7 +51,6 @@ metadata {
         command "setHeatingSetpoint"
         command "setTemperatureForSlider"
         command "setTemperature"
-        command "setBoostLength"
         command "boostButton"
         command "boostTimeUp"
 		command "boostTimeDown"
@@ -55,136 +58,6 @@ metadata {
 
 	simulator {
 		// TODO: define status and reply messages here
-	}
-
-	tiles(scale: 2) {
-
-		multiAttributeTile(name: "thermostat", width: 6, height: 4, type:"thermostat") {
-			tileAttribute("device.temperature", key:"PRIMARY_CONTROL", canChangeBackground: true){
-				attributeState "default", label: '${currentValue}°', unit:"C", 
-                backgroundColors:[
-					[value: 0, color: "#153591"],
-					[value: 10, color: "#1e9cbb"],
-					[value: 13, color: "#90d2a7"],
-					[value: 17, color: "#44b621"],
-					[value: 20, color: "#f1d801"],
-					[value: 25, color: "#d04e00"],
-					[value: 29, color: "#bc2323"]
-				]
-			}
-            tileAttribute ("statusMsg", key: "SECONDARY_CONTROL") {
-				attributeState "statusMsg", label:'${currentValue}'
-			}
-            tileAttribute("device.temperature", key: "VALUE_CONTROL") {
-    				attributeState("default", action: "setTemperature")
-  			}
-  			tileAttribute("device.thermostatMode", key: "THERMOSTAT_MODE") {
-    				attributeState("off", label:'Off')
-    				attributeState("heat", label:'Manual')
-    				attributeState("cool", label:'Manual')
-    				attributeState("auto", label:'Schedule')
-                    attributeState("emergency heat", label:'Boost')
-  			}
-  			tileAttribute("device.heatingSetpoint", key: "HEATING_SETPOINT") {
-                    attributeState "default", label: '${currentValue}', backgroundColors: [
-				// Celsius Color Range
-				[value: 0, color: "#153591"],
-					[value: 10, color: "#1e9cbb"],
-					[value: 13, color: "#90d2a7"],
-					[value: 17, color: "#44b621"],
-					[value: 20, color: "#f1d801"],
-					[value: 25, color: "#d04e00"],
-					[value: 29, color: "#bc2323"]
-			]}
-		}
-        
-        valueTile("temperature", "device.temperature", width: 2, height: 2){
-			state "default", label: '${currentValue}°', unit:"C", 
-            backgroundColors:[
-				[value: 0, color: "#153591"],
-				[value: 10, color: "#1e9cbb"],
-				[value: 13, color: "#90d2a7"],
-				[value: 17, color: "#44b621"],
-				[value: 20, color: "#f1d801"],
-				[value: 25, color: "#d04e00"],
-				[value: 29, color: "#bc2323"]
-			]
-		}
-        
-        valueTile("heatingSetpoint", "device.desiredHeatSetpoint", width: 2, height: 2) {
-			state "default", label:'${currentValue}°', unit:"C",
-            backgroundColors:[
-                [value: 0, color: "#153591"],
-					[value: 10, color: "#1e9cbb"],
-					[value: 13, color: "#90d2a7"],
-					[value: 17, color: "#44b621"],
-					[value: 20, color: "#f1d801"],
-					[value: 25, color: "#d04e00"],
-					[value: 29, color: "#bc2323"]
-            ]
-		}
-        
-        valueTile("averageAir", "device.averageAir", width: 2, height: 2) {
-			state "default", label:'${currentValue}°', unit:"C",
-            backgroundColors:[
-                [value: 0, color: "#153591"],
-					[value: 10, color: "#1e9cbb"],
-					[value: 13, color: "#90d2a7"],
-					[value: 17, color: "#44b621"],
-					[value: 20, color: "#f1d801"],
-					[value: 25, color: "#d04e00"],
-					[value: 29, color: "#bc2323"]
-            ]
-		}
-        standardTile("heatingSetpointUp", "device.desiredHeatSetpoint", width: 1, height: 1, canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
-			state "heatingSetpointUp", label:'  ', action:"heatingSetpointUp", icon:"st.thermostat.thermostat-up", backgroundColor:"#ffffff"
-		}
-
-		standardTile("heatingSetpointDown", "device.desiredHeatSetpoint", width: 1, height: 1, canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
-			state "heatingSetpointDown", label:'  ', action:"heatingSetpointDown", icon:"st.thermostat.thermostat-down", backgroundColor:"#ffffff"
-		}
-        
-        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-			state("default", label:'refresh', action:"polling.poll", icon:"st.secondary.refresh-icon")
-		}        
-        
-        standardTile("switch", "device.switch", decoration: "flat", height: 2, width: 2, inactiveLabel: false) {
-			state "on", label:'${name}', action:"switch.off", icon:"st.Home.home1", backgroundColor:"#f1d801"
-			state "off", label:'${name}', action:"switch.on", icon:"st.Home.home1", backgroundColor:"#ffffff"
-		}
-        
-        standardTile("thermostatMode", "device.thermostatMode", inactiveLabel: true, decoration: "flat", width: 2, height: 2) {
-			state("auto", label: "SCHEDULED", icon:"st.Office.office7")
-            state("heat", label: "FIXED TEMPERATURE", icon:"st.Weather.weather2")
-            state("emergency heat", label: "OVERRIDE", icon:"st.Health & Wellness.health7")
-			state("off", icon:"st.thermostat.heating-cooling-off")
-		}
-        
-        standardTile("mode_auto", "device.mode_auto", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-        	state "default", action:"auto", label:'Schedule', icon:"st.Office.office7"
-    	}
-        
-        standardTile("mode_manual", "device.mode_manual", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-        	state "default", action:"heat", label:'Manual', icon:"st.Weather.weather2"
-   	 	}
-        
-        standardTile("mode_off", "device.mode_off", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-        	state "default", action:"off", icon:"st.thermostat.heating-cooling-off"
-   	 	}
-        
-        valueTile("boost", "device.boostLabel", inactiveLabel: false, decoration: "flat", width: 2, height: 2, wordwrap: true) {
-			state("default", label:'${currentValue}', action:"boostButton")
-		}
-        
-         standardTile("boostTimeUp", "device.boostLength", width: 1, height: 1, canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
-			state "heatingSetpointUp", label:'  ', action:"boostTimeUp", icon:"st.thermostat.thermostat-up", backgroundColor:"#ffffff"
-		}
-		standardTile("boostTimeDown", "device.boostLength", width: 1, height: 1, canChangeIcon: false, inactiveLabel: false, decoration: "flat") {
-			state "heatingSetpointDown", label:'  ', action:"boostTimeDown", icon:"st.thermostat.thermostat-down", backgroundColor:"#ffffff"
-		}
-        
-        main(["temperature"])
-		details(["thermostat", "mode_auto", "mode_manual", "mode_off", "heatingSetpointUp", "heatingSetpoint", "boost", "boostTimeUp", "heatingSetpointDown", "boostTimeDown", "refresh"])
 	}
 }
 
@@ -344,7 +217,7 @@ def setThermostatMode(mode) {
             parent.apiPOSTByChild(args)
    		} else {
         	args = [
-        		method: "setProgramme", roomId: device.deviceNetworkId, roomMode: "prog"
+        		method: "setProgramme", roomId: device.deviceNetworkId, roomMode: "schedule"
         	]
             parent.apiPOSTByChild(args)
         }
@@ -353,29 +226,15 @@ def setThermostatMode(mode) {
     runIn(3, refresh)
 }
 
-def refreshBoostLabel() {
-	def boostLabel = "Start\n$state.boostLength Min Boost"
-    def latestThermostatMode = device.latestState('thermostatMode')  
-    if (latestThermostatMode.stringValue == 'emergency heat' ) {
-    	boostLabel = "Restart\n$state.boostLength Min Boost"
-    }
-    if (latestThermostatMode.stringValue == 'off' ) {
-    	boostLabel = "Boost not\navailable"
-    }
-    sendEvent("name":"boostLabel", "value": boostLabel, displayed: false)
-}
-
 def setBoostLength(minutes) {
 	log.debug "Executing 'setBoostLength with length $minutes minutes'"
-    if (minutes < 10) {
-		minutes = 10
+    if (minutes < 5) {
+		minutes = 5
 	}
-	if (minutes > 240) {
-		minutes = 240
+	if (minutes > 300) {
+		minutes = 300
 	}
-    state.boostLength = minutes
-    sendEvent("name":"boostLength", "value": state.boostLength, displayed: true)
-    refreshBoostLabel()  
+    sendEvent("name":"boostLength", "value": state.boostLength, "unit":"minutes", displayed: true)
 }
 
 def getBoostIntervalValue() {
@@ -437,7 +296,7 @@ def poll() {
     def mode = room.runMode[0]
     if (mode == "fixed") mode = "heat"
     else if (mode == "off" || mode == "frost") mode = "off"
-    else if (mode == "prog") mode = "auto"
+    else if (mode == "prog" || mode == "schedule") mode = "auto"
     else if (mode == "override") mode = "emergency heat"
     sendEvent(name: 'thermostatMode', value: mode) 
     modeMsg = "Mode: " + mode.toUpperCase() + "."
@@ -446,9 +305,11 @@ def poll() {
         if (state.boostLength == null || state.boostLength == '')
         {
         	state.boostLength = 60
-            sendEvent("name":"boostLength", "value": 60, displayed: true)
+            sendEvent("name":"boostLength", "value": 60, "unit":"minutes", displayed: true)
+        } else {
+        	sendEvent("name":"boostLength", "value": state.boostLength, "unit":"minutes", displayed: true)
         }
-    	def boostLabel = "Start\n$state.boostLength Min Boost"
+    	def boostLabel = "OFF"
     
     //If Warmup heating device is set to disabled, then force off if not already off.
     if (settings.disableDevice != null && settings.disableDevice == true && activeHeatCoolMode != "OFF") {
@@ -462,7 +323,7 @@ def poll() {
     	mode = 'off'
     } else if (mode == "emergency heat") {       
         def boostTime = room.overrideDur
-        boostLabel = "Restart\n$state.boostLength Min Boost"
+        boostLabel = boostTime + "min remaining"
         sendEvent("name":"boostTimeRemaining", "value": boostTime + " mins")
     }
     
@@ -478,17 +339,22 @@ def poll() {
     sendEvent(name: 'coolingSetpoint', value: heatingSetpoint, unit: "C", state: "heat")
     sendEvent(name: 'thermostatSetpoint', value: heatingSetpoint, unit: "C", state: "heat", displayed: false)
     
+    if ((room.targetTemp[0] as BigDecimal) > (room.currentTemp[0] as BigDecimal)) {
+        	sendEvent(name: 'thermostatOperatingState', value: "heating")
+        }       
+        else {
+        	sendEvent(name: 'thermostatOperatingState', value: "idle")
+        } 
+    
     sendEvent(name: 'thermostatFanMode', value: "off", displayed: false)
     
-    def averageAir = String.format("%2.1f",(room.airTemp[0] as BigDecimal) / 10)
-    sendEvent("name": "averageAir", "value": averageAir, unit: "C")
+    def airTemperature = String.format("%2.1f",(room.airTemp[0] as BigDecimal) / 10)
+    sendEvent("name": "airTemperature", "value": airTemperature, unit: "C")
     sendEvent("name":"statusMsg", "value": modeMsg + " " + airTempMsg, displayed: false)
     
     state.desiredHeatSetpoint = (int) Double.parseDouble(heatingSetpoint)
     sendEvent("name":"desiredHeatSetpoint", "value": state.desiredHeatSetpoint, unit: "C", displayed: false)   
     
-    airTempMsg = "Air Temp: " + averageAir +"°C."
-    sendEvent("name":"statusMsg", "value": modeMsg + " " + airTempMsg, displayed: false)
     sendEvent("name":"boostLabel", "value": boostLabel, displayed: false)
 }
 
