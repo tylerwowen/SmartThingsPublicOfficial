@@ -32,6 +32,7 @@
  *
  *	  08.12.2020
  *	  v3.1 - New Smartthings App UI.
+ *	  v3.1a - Add missing set boost length command for WebCore.
  */
 
 metadata {
@@ -47,6 +48,7 @@ metadata {
         capability "tigerdrum36561.boostLength"
         
         command "setThermostatMode"
+        command "setBoostLength"
 	}
 
 	simulator {

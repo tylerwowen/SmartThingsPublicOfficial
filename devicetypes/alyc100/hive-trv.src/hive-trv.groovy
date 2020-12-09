@@ -33,6 +33,7 @@
  *
  *  8.12.2020
  *	v1.4 Update UI for new SmartThings app
+ *	v1.4a - Add missing set boost length command for WebCore.
  */
  
 preferences 
@@ -65,6 +66,7 @@ metadata {
         command "setThermostatMode"
         command "setHeatingSetpoint"
         command "setTemperatureForSlider"
+        command "setBoostLength"
         command "boostButton"
 	}
 
