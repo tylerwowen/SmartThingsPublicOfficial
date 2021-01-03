@@ -218,7 +218,7 @@ def setThermostatMode(mode) {
             parent.apiPOSTByChild(args)
    		} else {
         	args = [
-        		method: "setProgramme", roomId: device.deviceNetworkId, roomMode: "schedule"
+        		method: "setProgramme", roomId: device.deviceNetworkId, roomMode: "prog"
         	]
             parent.apiPOSTByChild(args)
         }
